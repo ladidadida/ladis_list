@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative base so assets load correctly under HA Ingress dynamic paths.
+  base: './',
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
