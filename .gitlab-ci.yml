@@ -1,101 +1,75 @@
-image: python:3.14
+include:
+  - local: .gitlab/generated.gitlab-ci.yml
 
-stages:
-  - lint
-  - typecheck
-  - test
-  - build
-  - publish
+variables:
+  UV_CACHE_DIR: .cache/uv
 
-cache:
-  paths:
-    - .cache/pip
-    - .venv/
+# ── Reusable setup template ───────────────────────────────────────────────────
 
-before_script:
-  - apt-get update && apt-get install -y npm
-  - npm install -g pyright
-  - pip install uv
-  - uv sync
+.uv_dev:
+  image: python:3.13
+  cache:
+    key:
+      files:
+        - uv.lock
+        - pyproject.toml
+      prefix: uv-3.13
+    paths:
+      - .cache/uv/
+      - .venv/
+  before_script:
+    - pip install uv bam-tool
+    - uv sync --dev --frozen
 
-# Linting with ruff
-lint:ruff:
-  include:
-    - local: .gitlab/generated.gitlab-ci.yml
+# ── Lint ─────────────────────────────────────────────────────────────────────
 
-  variables:
-    UV_CACHE_DIR: .cache/uv
+lint:
+  extends:
+    - .lint
+    - .uv_dev
+  stage: lint
 
-  stages:
-    - lint
-    - test
-    - build
+format-check:
+  extends:
+    - .format-check
+    - .uv_dev
+  stage: lint
 
-  # ── Reusable setup template ─────────────────────────────────────────────────
+typecheck:
+  extends:
+    - .typecheck
+    - .uv_dev
+  stage: lint
 
-  .uv_dev:
-    image: python:3.14
-    cache:
-      key:
-        files:
-          - uv.lock
-          - pyproject.toml
-        prefix: uv-3.14
-      paths:
-        - .cache/uv/
-        - .venv/
-    before_script:
-      - pip install uv bam-tool
-      - uv sync --dev --frozen
+# ── Test ─────────────────────────────────────────────────────────────────────
 
-  # ── Lint ────────────────────────────────────────────────────────────────────
+test-unit:
+  extends:
+    - .test-unit
+    - .uv_dev
+  stage: test
 
-  lint:
-    extends:
-      - .lint
-      - .uv_dev
-    stage: lint
+test-integration:
+  extends:
+    - .test-integration
+    - .uv_dev
+  stage: test
 
-  format-check:
-    extends:
-      - .format-check
-      - .uv_dev
-    stage: lint
+test-component:
+  extends:
+    - .test-component
+    - .uv_dev
+  stage: test
 
-  typecheck:
-    extends:
-      - .typecheck
-      - .uv_dev
-    stage: lint
+# ── Build ─────────────────────────────────────────────────────────────────────
 
-  # ── Test ────────────────────────────────────────────────────────────────────
+build:
+  extends:
+    - .build
+    - .uv_dev
+  stage: build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 7 days
 
-  test-unit:
-    extends:
-      - .test-unit
-      - .uv_dev
-    stage: test
-
-  test-integration:
-    extends:
-      - .test-integration
-      - .uv_dev
-    stage: test
-
-  test-component:
-    extends:
-      - .test-component
-      - .uv_dev
-    stage: test
-
-  # ── Build ───────────────────────────────────────────────────────────────────
-
-  build:
-    extends:
-      - .build
-      - .uv_dev
-    stage: build
-    artifacts:
-      paths:
-        - dist/
-      expire_in: 7 days
