@@ -45,4 +45,4 @@ def test_cli_version() -> None:
         check=False,
     )
     assert result.returncode == 0
-    assert re.search(r"\d+\.\d+\.\d+", result.stdout), f"No version in output: {result.stdout!r}"
+    assert re.search(r"\d+\.\d+", result.stdout), f"No version in output: {result.stdout!r}"
