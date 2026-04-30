@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8099
     log_level: str = "info"
+    api_key: str = ""
 
     @property
     def db_url(self) -> str:

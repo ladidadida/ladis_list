@@ -110,6 +110,9 @@ Goal: installable and runnable as a local HA add-on.
 - [ ] Log structured output (JSON) selectable via `LOG_FORMAT` env var
 - [ ] aarch64 + armv7 build verified (QEMU or native)
 - [ ] Lighthouse score ≥ 90 on mobile
+- [x] **Automation API key** – optional `api_key` add-on option; when set, direct
+      port-8099 requests must supply `X-API-Key: <key>`; Ingress requests bypass
+      the check so the browser UI is unaffected.
 
 ---
 
@@ -130,7 +133,7 @@ These items are explicitly deferred until Phase 1–4 are stable.
 | Decision | Rationale |
 |---|---|
 | SQLite only (no Postgres) | HA add-ons run on embedded hardware; SQLite is sufficient for a single-household list. |
-| No auth layer | Ingress handles HA session auth; the add-on trusts all requests arriving via Ingress. |
+| No auth layer | Ingress handles HA session auth; the add-on trusts all requests arriving via Ingress. When `api_key` is configured, all non-Ingress `/api/` requests must supply `X-API-Key: <key>`. |
 | No WebSocket / SSE in MVP | Polling via React Query is sufficient; real-time can be added later without breaking API clients. |
 | Static frontend committed as build artefact inside image | Keeps the add-on installation simple (no npm at runtime). |
 | Hash routing in React | Required so that deep links work under a dynamic Ingress sub-path without server-side routing. |

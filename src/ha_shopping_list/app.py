@@ -38,6 +38,37 @@ _INGRESS_META_PLACEHOLDER = b'content=""'
 _INGRESS_META_TEMPLATE = 'content="{path}"'
 
 
+class _APIKeyMiddleware(BaseHTTPMiddleware):
+    """Protects /api/v1/ routes when an api_key is configured.
+
+    Rules:
+    - If no api_key is configured: all requests pass through (existing behaviour,
+      security provided by HA Ingress).
+    - If an api_key is configured:
+        - Requests arriving via HA Ingress carry an ``X-Ingress-Path`` header
+          added by the HA nginx proxy → allowed unconditionally.
+        - All other requests must supply ``X-API-Key: <key>`` → 401 otherwise.
+    - Non-API paths (static assets, SPA) are never blocked.
+    """
+
+    def __init__(self, app: ASGIApp, api_key: str) -> None:
+        super().__init__(app)
+        self._api_key = api_key
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if self._api_key and request.url.path.startswith("/api/"):
+            # Ingress requests are identified by the X-Ingress-Path header that
+            # HA's nginx proxy injects – no key needed for those.
+            if not request.headers.get("X-Ingress-Path"):
+                supplied = request.headers.get("X-API-Key", "")
+                if supplied != self._api_key:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Missing or invalid API key"},
+                    )
+        return await call_next(request)
+
+
 class _IngressPathMiddleware(BaseHTTPMiddleware):
     """Injects the X-Ingress-Path value into the index.html meta tag."""
 
@@ -187,5 +218,9 @@ def create_app() -> FastAPI:
                 "<p>Backend is running. Frontend not built yet.</p>"
                 "<p>API docs: <a href='/docs'>/docs</a></p></body></html>"
             )
+
+    api_key = get_settings().api_key
+    if api_key:
+        app.add_middleware(_APIKeyMiddleware, api_key=api_key)
 
     return app
