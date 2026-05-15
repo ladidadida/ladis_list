@@ -22,11 +22,12 @@ RUN uv sync --no-dev --frozen --no-editable
 # Stage 3 – Release: HA base image with only runtime artefacts
 FROM ghcr.io/home-assistant/base-python:3.13-alpine3.23
 
+ARG BUILD_VERSION=unknown
 LABEL \
     io.hass.name="Shopping List" \
     io.hass.description="A fast, mobile-friendly shopping list for Home Assistant." \
     io.hass.type="addon" \
-    io.hass.version="0.1.0"
+    io.hass.version="${BUILD_VERSION}"
 
 WORKDIR /app
 

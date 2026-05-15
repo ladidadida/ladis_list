@@ -4,6 +4,7 @@ version: "0.1.4"
 slug: ha_shopping_list
 description: A fast, mobile-friendly shopping list for Home Assistant.
 url: https://github.com/ladidadida/ha_shopping_list
+image: ghcr.io/ladidadida/ha_shopping_list
 
 arch:
   - aarch64
