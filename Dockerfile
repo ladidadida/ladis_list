@@ -1,5 +1,5 @@
 # ARG must be declared before the first FROM to be usable in FROM instructions
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.23
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.22
 
 # Stage 1 – Frontend: build the React/Vite app
 FROM node:22-alpine AS frontend-builder
