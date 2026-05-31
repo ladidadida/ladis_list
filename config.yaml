@@ -1,6 +1,6 @@
 ---
 name: Shopping List
-version: "0.1.5"
+version: "0.1.6"
 slug: ha_shopping_list
 description: A fast, mobile-friendly shopping list for Home Assistant.
 url: https://github.com/ladidadida/ha_shopping_list

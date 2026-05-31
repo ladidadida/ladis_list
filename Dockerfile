@@ -2,7 +2,8 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.22
 
 # Stage 1 – Frontend: build the React/Vite app
-FROM node:22-alpine AS frontend-builder
+# Always build on amd64 – output is pure JS and platform-independent
+FROM --platform=linux/amd64 node:22-alpine AS frontend-builder
 WORKDIR /build/frontend
 RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
