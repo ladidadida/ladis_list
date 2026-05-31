@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from ..models.category import CategoryCreate, CategoryDB
+from ..models.category import CategoryCreate, CategoryDB, CategoryReorderItem
 
 
 def list_categories(session: Session) -> list[CategoryDB]:
@@ -27,3 +27,13 @@ def delete_category(session: Session, category_id: int) -> bool:
     session.delete(category)
     session.commit()
     return True
+
+
+def reorder_categories(session: Session, items: list[CategoryReorderItem]) -> None:
+    """Bulk-update sort_order for the given categories. Unknown IDs are silently ignored."""
+    for item in items:
+        category = session.get(CategoryDB, item.id)
+        if category is not None:
+            category.sort_order = item.sort_order
+            session.add(category)
+    session.commit()

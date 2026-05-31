@@ -9,8 +9,10 @@ import {
   fetchCategories,
   fetchItems,
   fetchLists,
+  reorderCategories,
   updateItem,
   type CategoryCreate,
+  type CategoryReorderItem,
   type ItemCreate,
   type ItemUpdate,
   type ShoppingListCreate,
@@ -66,6 +68,32 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: number) => deleteCategory(id),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CATEGORIES_KEY })
+      qc.invalidateQueries({ queryKey: ['items'] })
+    },
+  })
+}
+
+export function useReorderCategories() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (items: CategoryReorderItem[]) => reorderCategories(items),
+    onMutate: async (items) => {
+      await qc.cancelQueries({ queryKey: CATEGORIES_KEY })
+      const previous = qc.getQueryData(CATEGORIES_KEY)
+      qc.setQueryData(CATEGORIES_KEY, (old: CategoryReorderItem[] | undefined) => {
+        if (!old) return old
+        const orderMap = new Map(items.map((i) => [i.id, i.sort_order]))
+        return [...old]
+          .map((c) => ({ ...c, sort_order: orderMap.get(c.id) ?? (c as { sort_order: number }).sort_order }))
+          .sort((a, b) => (a as { sort_order: number }).sort_order - (b as { sort_order: number }).sort_order)
+      })
+      return { previous }
+    },
+    onError: (_err, _items, ctx) => {
+      if (ctx?.previous !== undefined) qc.setQueryData(CATEGORIES_KEY, ctx.previous)
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: CATEGORIES_KEY })
       qc.invalidateQueries({ queryKey: ['items'] })
     },

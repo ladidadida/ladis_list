@@ -24,3 +24,8 @@ class CategoryCreate(CategoryBase):
 
 class CategoryRead(CategoryBase):
     id: int
+
+
+class CategoryReorderItem(SQLModel):
+    id: int
+    sort_order: int

@@ -69,3 +69,28 @@ def test_delete_category(client: TestClient) -> None:
 def test_delete_category_not_found(client: TestClient) -> None:
     response = client.delete("/api/v1/categories/99999")
     assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_reorder_categories(client: TestClient) -> None:
+    """PATCH /categories/reorder should update sort_order and be reflected in GET."""
+    cats = client.get("/api/v1/categories").json()
+    # Reverse the order of the first three categories
+    reorder_payload = [
+        {"id": cats[2]["id"], "sort_order": 0},
+        {"id": cats[1]["id"], "sort_order": 1},
+        {"id": cats[0]["id"], "sort_order": 2},
+    ]
+    resp = client.patch("/api/v1/categories/reorder", json=reorder_payload)
+    assert resp.status_code == 204
+
+    updated = client.get("/api/v1/categories").json()
+    first_three_ids = [c["id"] for c in updated[:3]]
+    assert first_three_ids == [cats[2]["id"], cats[1]["id"], cats[0]["id"]]
+
+
+@pytest.mark.integration
+def test_reorder_categories_unknown_id_ignored(client: TestClient) -> None:
+    """Unknown IDs in the reorder payload must not cause an error."""
+    resp = client.patch("/api/v1/categories/reorder", json=[{"id": 99999, "sort_order": 0}])
+    assert resp.status_code == 204

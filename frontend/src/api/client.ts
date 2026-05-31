@@ -52,6 +52,11 @@ export interface CategoryCreate {
   sort_order?: number
 }
 
+export interface CategoryReorderItem {
+  id: number
+  sort_order: number
+}
+
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -86,6 +91,9 @@ export const createCategory = (data: CategoryCreate) =>
 
 export const deleteCategory = (id: number) =>
   request<void>(`/categories/${id}`, { method: 'DELETE' })
+
+export const reorderCategories = (items: CategoryReorderItem[]) =>
+  request<void>('/categories/reorder', { method: 'PATCH', body: JSON.stringify(items) })
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 

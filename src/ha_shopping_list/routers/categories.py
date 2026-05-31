@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from ..database import get_session
-from ..models.category import CategoryCreate, CategoryRead
+from ..models.category import CategoryCreate, CategoryRead, CategoryReorderItem
 from ..services import categories as svc
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -26,3 +26,11 @@ def post_category(data: CategoryCreate, session: Session = Depends(get_session))
 def delete_category(category_id: int, session: Session = Depends(get_session)) -> None:
     if not svc.delete_category(session, category_id):
         raise HTTPException(status_code=404, detail="Category not found")
+
+
+@router.patch("/reorder", status_code=204)
+def patch_reorder(
+    data: list[CategoryReorderItem],
+    session: Session = Depends(get_session),
+) -> None:
+    svc.reorder_categories(session, data)
