@@ -32,17 +32,24 @@ Kanban/recurrence/HA-integration/frontend-view code yet — that's Phases 1–4.
 
 ---
 
-## Phase 1 – Backend MVP: Data Model, Services, CRUD ⬜
+## Phase 1 – Backend MVP: Data Model, Services, CRUD ✅
 
 Goal: a fully functional REST API for todos/columns/tags, no recurrence or HA
 integration yet.
 
-- [ ] `models/column.py`, `models/tag.py`, `models/todo.py`, `models/todo_tag.py`
-- [ ] `services/columns.py`, `services/tags.py`, `services/todos.py`
-- [ ] `routers/columns.py`, `routers/tags.py`, `routers/todos.py` (without `/complete`
+- [x] `models/column.py`, `models/tag.py`, `models/todo.py`, `models/todo_tag.py`
+- [x] `services/columns.py`, `services/tags.py`, `services/todos.py`
+- [x] `routers/columns.py`, `routers/tags.py`, `routers/todos.py` (without `/complete`
       recurrence wiring — plain column move)
-- [ ] Seed the four default columns on first start
-- [ ] Unit tests for services, integration tests for all routes
+- [x] Seed the four default columns on first start
+- [x] Integration tests for all routes (no separate mocked-session unit tests — same
+      convention as `ha_shopping_list`, which covers services via API-level integration
+      tests instead)
+
+**Note:** tag association on a todo is exposed as `tag_ids` on create/update/read,
+filling a gap the original API design table didn't spell out explicitly (it only
+listed `tag_id` as a list filter, but `models/todo_tag.py` was in scope for this phase
+and needs a way to be exercised through the API).
 
 **Exit criteria:** Todos can be created, listed, filtered, updated, and deleted via the
 API; columns and tags are manageable. No assignees, no recurrence, no webhook yet.
