@@ -110,14 +110,32 @@ container catches up on overdue recurrences on startup.
 
 ---
 
-## Phase 4 – Frontend Views ⬜
+## Phase 4 – Frontend Views 🔄
 
-- [ ] `api/client.ts` (once there's a real API to wrap)
+Started ahead of Phase 3 (HA Integration) on request, to get a real frontend usable
+for manual testing of columns/tags/todos/recurrence sooner.
+
+- [x] `api/client.ts` – typed fetch wrappers for columns/tags/todos
+- [x] One TanStack Query hook file per resource (`useColumns`, `useTags`, `useTodos`)
+- [x] Simple list view (`ColumnSection` + `TodoCard`) — columns as plain sections, no
+      drag-and-drop yet; moving a todo between columns is a `<select>` on the card
+- [x] `AddTodoForm` (title, column, due date, priority, plain-text `rrule` field, tag
+      multi-select)
+- [x] `TagManager` — minimal inline create/delete, standing in for the full Settings
+      page for now
 - [ ] Kanban board (swimlanes, drag-and-drop via `@dnd-kit/core` + `@dnd-kit/sortable`)
-- [ ] List view
-- [ ] Card detail slide-over (full edit + RRULE builder)
-- [ ] Settings (columns, tags, persons read-only, webhook secret display)
+      — deferred; the `<select>`-based column move is the stand-in
+- [ ] Card detail slide-over (full edit + RRULE builder with presets — currently a
+      plain text input)
+- [ ] Settings page (column management, persons read-only, webhook secret display)
 - [ ] React Router v6 (hash-based) once there's more than one view
+
+**Found during manual check:** creating a todo with `rrule` failed with
+`sqlite3.OperationalError: table todo has no column named rrule` — not a code bug, the
+local dev DB at `/tmp/ha-todo-manager-dev.db` predated the Phase 2 schema changes
+(`SQLModel.metadata.create_all()` only creates missing tables, it doesn't alter
+existing ones). Fixed by deleting the stale dev DB file. No migration tooling added —
+not warranted pre-release with no real data to preserve.
 
 **Exit criteria:** All v1 user stories from `AGENTS.md` completable in the browser
 without console errors on a mobile viewport.

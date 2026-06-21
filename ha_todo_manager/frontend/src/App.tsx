@@ -1,34 +1,43 @@
-import { useQuery } from '@tanstack/react-query'
-
-// Reads the HA Ingress path injected into index.html at runtime, same
-// convention as ha_shopping_list/frontend/src/api/client.ts.
-const meta = document.querySelector<HTMLMetaElement>('meta[name="ingress-path"]')
-const BASE = (meta?.content ?? '').replace(/\/$/, '')
-
-function fetchHealth(): Promise<{ status: string }> {
-  return fetch(`${BASE}/api/health`).then((res) => res.json())
-}
+import AddTodoForm from './components/AddTodoForm'
+import ColumnSection from './components/ColumnSection'
+import TagManager from './components/TagManager'
+import { useColumns } from './hooks/useColumns'
+import { useTags } from './hooks/useTags'
+import { useTodos } from './hooks/useTodos'
 
 export default function App() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['health'],
-    queryFn: fetchHealth,
-  })
+  const { data: columns = [], isLoading: columnsLoading } = useColumns()
+  const { data: tags = [] } = useTags()
+  const { data: todos = [], isLoading: todosLoading } = useTodos()
+
+  const loading = columnsLoading || todosLoading
+  const sortedColumns = [...columns].sort((a, b) => a.position - b.position)
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="rounded-lg bg-white p-8 text-center shadow">
-        <h1 className="text-xl font-semibold text-gray-900">Todo Manager</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Skeleton — no views implemented yet.
-        </p>
-        <p className="mt-4 text-sm">
-          Backend health:{' '}
-          {isLoading && <span className="text-gray-400">checking…</span>}
-          {isError && <span className="text-red-600">unreachable</span>}
-          {data && <span className="text-green-600">{data.status}</span>}
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <header className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
+        <div className="max-w-lg mx-auto flex items-center px-4 py-3">
+          <h1 className="text-lg font-bold text-gray-800">✅ Todo Manager</h1>
+        </div>
+      </header>
+
+      <main className="max-w-lg mx-auto px-4 pb-8 pt-4 flex flex-col gap-4">
+        <AddTodoForm columns={sortedColumns} tags={tags} />
+        <TagManager />
+
+        {loading && <p className="text-center text-sm text-gray-400 py-4">Laden…</p>}
+
+        {!loading &&
+          sortedColumns.map((column) => (
+            <ColumnSection
+              key={column.id}
+              column={column}
+              todos={todos.filter((t) => t.column_id === column.id)}
+              columns={sortedColumns}
+              tags={tags}
+            />
+          ))}
+      </main>
     </div>
   )
 }
