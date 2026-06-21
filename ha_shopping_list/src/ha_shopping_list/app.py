@@ -81,7 +81,12 @@ class _IngressPathMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
 
-        # Only intercept HTML responses for index.html (SPA fallback routes)
+        # Only intercept the SPA fallback route's HTML — not /api/*, and not
+        # FastAPI's own /docs, /redoc, /openapi.json (those are text/html too, and
+        # without this check they'd get silently replaced with index.html).
+        path = request.url.path
+        if path.startswith(("/api", "/docs", "/redoc", "/openapi.json")):
+            return response
         content_type = response.headers.get("content-type", "")
         if "text/html" not in content_type:
             return response
