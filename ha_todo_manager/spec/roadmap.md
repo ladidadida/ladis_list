@@ -25,6 +25,11 @@ Current date: 2026-06-21
 - [x] `config.yaml`, `build.yaml`, `Dockerfile`, `run.sh`, `DOCS.md`, icon/logo placeholders
 - [x] Registered in `.github/workflows/ci.yml`'s add-on matrix
 - [x] `AGENTS.md`, `spec/roadmap.md`
+- [x] Frontend SPA serving wired into `app.py` (static mount + SPA fallback + HA
+      ingress-path injection middleware, mirroring `ha_shopping_list/app.py`; no
+      `api_key` middleware since this add-on has no direct REST port). This was
+      missing from the initial skeleton — `bam serve`/`docker-serve` served only
+      `/api/health`, nothing at `/`.
 - [ ] Real icon/logo artwork (current ones are generated placeholders)
 
 **Exit criteria:** CI green, `docker build` succeeds, container serves `/api/health`. No
