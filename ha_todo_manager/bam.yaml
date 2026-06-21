@@ -1,0 +1,143 @@
+version: 1
+
+cache:
+  local:
+    enabled: true
+    path: .bam/cache
+
+tasks:
+  # ── Static checks ────────────────────────────────────────────────────────────
+
+  lint:
+    command: uv run ruff check src tests
+    stage: lint
+    inputs:
+      - "src/**/*.py"
+      - "tests/**/*.py"
+      - pyproject.toml
+
+  format:
+    command: uv run ruff format src tests
+    inputs:
+      - "src/**/*.py"
+      - "tests/**/*.py"
+      - pyproject.toml
+
+  format-check:
+    command: uv run ruff format --check src tests
+    stage: lint
+    inputs:
+      - "src/**/*.py"
+      - "tests/**/*.py"
+      - pyproject.toml
+
+  typecheck:
+    command: uv run pyright
+    stage: lint
+    inputs:
+      - "src/**/*.py"
+      - pyproject.toml
+
+  # ── Tests ─────────────────────────────────────────────────────────────────────
+
+  test-unit:
+    command: uv run pytest -q tests/unit --junit-xml=.reports/junit-unit.xml
+    stage: test
+    inputs:
+      - "src/**/*.py"
+      - "tests/unit/**/*.py"
+      - "tests/conftest.py"
+      - pyproject.toml
+    outputs:
+      - .reports/junit-unit.xml
+
+  test-integration:
+    command: uv run pytest -q tests/integration --junit-xml=.reports/junit-integration.xml
+    stage: test
+    inputs:
+      - "src/**/*.py"
+      - "tests/integration/**/*.py"
+      - "tests/conftest.py"
+      - pyproject.toml
+    outputs:
+      - .reports/junit-integration.xml
+
+  test-component:
+    command: uv run pytest -q -m component tests/component --junit-xml=.reports/junit-component.xml
+    stage: test
+    inputs:
+      - "src/**/*.py"
+      - "tests/component/**/*.py"
+      - "tests/conftest.py"
+      - pyproject.toml
+    outputs:
+      - .reports/junit-component.xml
+
+  # ── Build ─────────────────────────────────────────────────────────────────────
+
+  build:
+    command: uv run python -m build
+    stage: build
+    inputs:
+      - "src/**/*.py"
+      - pyproject.toml
+      - README.md
+      - LICENSE
+    outputs:
+      - dist/
+    depends_on:
+      - lint
+      - typecheck
+      - test-unit
+      - test-integration
+      - test-component
+
+  # ── Aggregate CI ──────────────────────────────────────────────────────────────
+
+  ci-checks:
+    command: echo "✓ All CI checks passed"
+    stage: build
+    depends_on:
+      - lint
+      - format-check
+      - typecheck
+      - test-unit
+      - test-integration
+      - test-component
+
+  # ── Development server ────────────────────────────────────────────────────────
+
+  serve:
+    command: uv run python -m ha_todo_manager --host 127.0.0.1 --port 8100 --db-path /tmp/ha-todo-manager-dev.db --log-level debug
+    interactive: true
+
+  # Build the Docker image and run it exactly as HA Supervisor would.
+  # Data is persisted in a named volume (ha-todo-manager-data) between runs.
+  # Logs stream to stdout; Ctrl-C stops and removes the container.
+  docker-serve:
+    command: >-
+      docker build -f Dockerfile -t ha-todo-manager:dev .. &&
+      docker run --rm
+      -p 127.0.0.1:8100:8100
+      -v ha-todo-manager-data:/data
+      -e SUPERVISOR_TOKEN=dev
+      --name ha-todo-manager-dev
+      ha-todo-manager:dev
+    interactive: true
+
+ci:
+  provider: github-actions
+  python_version: "3.13"
+  exclude:
+    - format
+    - serve
+    - docker-serve
+    - ci-checks
+  triggers:
+    push:
+      branches: [main]
+    pull_request:
+  triggers:
+    push:
+      branches: [main]
+    pull_request:

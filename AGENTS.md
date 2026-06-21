@@ -7,9 +7,16 @@ This file describes conventions, commands, and constraints for AI agents working
 This is a **multi-add-on Home Assistant repository** (`repository.yaml` at root, no
 root-level `config.yaml`). Each add-on lives in its own self-contained subdirectory.
 
-Currently the only add-on is `ha_shopping_list/`: a self-hosted shopping list manager
-with a FastAPI backend, a React frontend (served as static files), and SQLite
-persistence. It is deployed via HA Ingress, with no exposed external port.
+Add-ons in this repository:
+
+- `ha_shopping_list/`: a self-hosted shopping list manager with a FastAPI backend, a
+  React frontend (served as static files), and SQLite persistence. Deployed via HA
+  Ingress, with an optional direct port for automations.
+- `ha_todo_manager/`: a Kanban-style todo manager, same stack. Currently a skeleton
+  only (see its own `AGENTS.md` and `spec/roadmap.md` for design and build order).
+
+Each add-on has its own `AGENTS.md` with stack/architecture details specific to it;
+this file covers repository-wide conventions only.
 
 ## Repository Layout
 

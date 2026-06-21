@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}
@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}
@@ -137,7 +137,7 @@ jobs:
     - test-component
     strategy:
       matrix:
-        addon: [ha_shopping_list]
+        addon: [ha_shopping_list, ha_todo_manager]
     defaults:
       run:
         working-directory: ${{ matrix.addon }}

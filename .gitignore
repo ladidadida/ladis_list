@@ -4,6 +4,7 @@ dist/
 
 # Frontend dist bundled into the Python package for Docker builds (not committed)
 ha_shopping_list/src/ha_shopping_list/frontend/
+ha_todo_manager/src/ha_todo_manager/frontend/
 *.egg-info/
 .eggs/
 *.whl

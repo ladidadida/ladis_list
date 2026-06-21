@@ -1,0 +1,99 @@
+[project]
+name = "ha-todo-manager"
+dynamic = ["version"]
+description = "A Kanban-style todo manager for Home Assistant"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "ladidadida", email = "stefan@dalada.de" },
+]
+requires-python = ">= 3.13"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "fastapi>=0.115",
+  "sqlmodel>=0.0.22",
+  "uvicorn[standard]>=0.30",
+  "pydantic-settings>=2.3",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "pytest-cov>=7.0",
+  "httpx>=0.27",
+  "ruff>=0.3",
+  "pyright>=1.1",
+  "build>=1.0",
+  "twine>=4.0",
+  "bam-tool>=0.1",
+]
+
+[project.scripts]
+ha_todo_manager = "ha_todo_manager.cli:main"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+root = ".."
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src",
+  "tests",
+  "README.md",
+  "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ha_todo_manager"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+console_output_style = "classic"
+markers = [
+  "component: marks tests as component-level (integration, CLI, fixtures)",
+  "integration: marks tests as integration-level",
+]
+testpaths = ["tests"]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.13"
+include = ["src", "tests"]
+exclude = [
+  "**/.*",
+  "**/node_modules",
+  "**/__pycache__",
+  ".venv",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "I",    # isort
+  "W",    # pycodestyle warnings
+  "C90",  # mccabe
+  "UP",   # pyupgrade
+]
+extend-ignore = [
+  "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.format]
+quote-style = "double"
