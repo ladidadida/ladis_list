@@ -75,8 +75,6 @@ class _IngressPathMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, index_html: Path) -> None:
         super().__init__(app)
         self._index_html = index_html
-        # Cache: ingress_path -> patched HTML bytes
-        self._cache: dict[str, bytes] = {}
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
@@ -91,14 +89,15 @@ class _IngressPathMiddleware(BaseHTTPMiddleware):
         if "text/html" not in content_type:
             return response
 
+        # Re-read and re-patch on every request rather than caching: index.html is a
+        # few hundred bytes, so the I/O cost is negligible, and caching previously
+        # caused stale content to be served for the lifetime of the process whenever
+        # the build output changed underneath a running server (e.g. during local dev).
         ingress_path = request.headers.get("X-Ingress-Path", "").rstrip("/")
+        raw = self._index_html.read_bytes()
+        replacement = _INGRESS_META_TEMPLATE.format(path=ingress_path).encode()
+        patched = raw.replace(_INGRESS_META_PLACEHOLDER, replacement, 1)
 
-        if ingress_path not in self._cache:
-            raw = self._index_html.read_bytes()
-            replacement = _INGRESS_META_TEMPLATE.format(path=ingress_path).encode()
-            self._cache[ingress_path] = raw.replace(_INGRESS_META_PLACEHOLDER, replacement, 1)
-
-        patched = self._cache[ingress_path]
         return HTMLResponse(content=patched.decode(), status_code=response.status_code)
 
 
