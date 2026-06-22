@@ -1,4 +1,4 @@
-"""Integration tests for /api/todos (Phase 1 scope: no assignee/recurrence/webhook)."""
+"""Integration tests for /api/todos."""
 
 from __future__ import annotations
 
@@ -142,3 +142,51 @@ def test_complete_todo_moves_to_terminal_column(client: TestClient) -> None:
 def test_complete_todo_not_found(client: TestClient) -> None:
     response = client.post("/api/todos/00000000-0000-0000-0000-000000000000/complete")
     assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_filter_todos_by_assignee(client: TestClient) -> None:
+    column_id = _columns(client)[0]["id"]
+    # Resolve a Person id the cheap way: hit a route with X-Ingress-User so
+    # get_current_user creates a stub Person, then assign a todo to it directly.
+    client.get("/api/todos", headers={"X-Ingress-User": "user-1"})
+    person_id = client.get("/api/persons").json()[0]["id"]
+
+    assigned_id = client.post(
+        "/api/todos",
+        json={"title": "Assigned", "column_id": column_id, "assignee_id": person_id},
+    ).json()["id"]
+    client.post("/api/todos", json={"title": "Unassigned", "column_id": column_id})
+
+    response = client.get(f"/api/todos?assignee_id={person_id}")
+    assert response.status_code == 200
+    ids = [t["id"] for t in response.json()]
+    assert ids == [assigned_id]
+
+
+@pytest.mark.integration
+def test_mine_filter_resolves_current_user(client: TestClient) -> None:
+    column_id = _columns(client)[0]["id"]
+    client.get("/api/todos", headers={"X-Ingress-User": "user-2"})
+    person_id = client.get("/api/persons").json()[0]["id"]
+
+    mine_id = client.post(
+        "/api/todos",
+        json={"title": "Mine", "column_id": column_id, "assignee_id": person_id},
+    ).json()["id"]
+    client.post("/api/todos", json={"title": "Not mine", "column_id": column_id})
+
+    response = client.get("/api/todos?mine=true", headers={"X-Ingress-User": "user-2"})
+    assert response.status_code == 200
+    ids = [t["id"] for t in response.json()]
+    assert ids == [mine_id]
+
+
+@pytest.mark.integration
+def test_mine_filter_without_ingress_user_returns_empty(client: TestClient) -> None:
+    column_id = _columns(client)[0]["id"]
+    client.post("/api/todos", json={"title": "Anything", "column_id": column_id})
+
+    response = client.get("/api/todos?mine=true")
+    assert response.status_code == 200
+    assert response.json() == []

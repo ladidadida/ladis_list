@@ -1,4 +1,4 @@
-"""Business logic for todo operations (Phase 1 scope: no assignee/recurrence/webhook)."""
+"""Business logic for todo operations."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Literal
 from sqlmodel import Session, select
 
 from ..models.column import ColumnDB
-from ..models.todo import TodoCreate, TodoDB, TodoUpdate
+from ..models.todo import TodoCreate, TodoDB, TodoSource, TodoUpdate
 from ..models.todo_tag import TodoTagDB
 from . import recurrence
 
@@ -38,11 +38,14 @@ def list_todos(
     session: Session,
     column_id: uuid.UUID | None = None,
     tag_id: uuid.UUID | None = None,
+    assignee_id: uuid.UUID | None = None,
     overdue: bool | None = None,
 ) -> list[TodoDB]:
     stmt = select(TodoDB)
     if column_id is not None:
         stmt = stmt.where(TodoDB.column_id == column_id)
+    if assignee_id is not None:
+        stmt = stmt.where(TodoDB.assignee_id == assignee_id)
     if tag_id is not None:
         stmt = stmt.join(TodoTagDB, TodoTagDB.todo_id == TodoDB.id).where(  # type: ignore[arg-type]
             TodoTagDB.tag_id == tag_id
@@ -52,8 +55,15 @@ def list_todos(
     return list(session.exec(stmt).all())
 
 
-def create_todo(session: Session, data: TodoCreate) -> TodoDB:
+def create_todo(
+    session: Session,
+    data: TodoCreate,
+    source: TodoSource = "manual",
+    source_ref: str | None = None,
+) -> TodoDB:
     todo = TodoDB.model_validate(data)
+    todo.source = source
+    todo.source_ref = source_ref
     if todo.rrule is not None:
         todo.next_due = recurrence.first_due_date(todo.rrule, date.today())
     session.add(todo)

@@ -94,16 +94,58 @@ container catches up on overdue recurrences on startup.
 
 ---
 
-## Phase 3 – Home Assistant Integration ⬜
+## Phase 3 – Home Assistant Integration ✅
 
-- [ ] `models/person.py`
-- [ ] `services/persons.py`, `routers/persons.py`
-- [ ] `ha_client.py` – Supervisor REST calls (list `person.*` states, current-user lookup)
-- [ ] `get_current_user` FastAPI dependency resolving `X-Ingress-User` → `Person`
-- [ ] Person sync wired into the scheduler (`person_sync_interval_hours`)
-- [ ] `routers/webhook.py` – `POST /api/webhook/ha/{secret}` (create / complete actions)
-- [ ] Webhook secret generation-on-first-start + persistence + one-time display
-- [ ] `ha_webhook_secret` config option override path
+- [x] `models/person.py`
+- [x] `services/persons.py`, `routers/persons.py`
+- [x] `ha_client.py` – Supervisor REST calls (`fetch_persons`, async `httpx`; state
+      parsing split into a pure `parse_person_state` function, unit-tested)
+- [x] `dependencies.py` (new — not in the original module list) — `get_current_user`
+      resolving `X-Ingress-User` → `Person`
+- [x] Person sync wired into the scheduler (`person_sync_interval_hours`), as its own
+      loop alongside the existing recurrence loop (`scheduler.py` now has two:
+      `run_recurrence_loop` / `run_person_sync_loop`)
+- [x] `routers/webhook.py` – `POST /api/webhook/ha/{secret}` (create / complete
+      actions), `GET /api/webhook/secret` (one-time reveal)
+- [x] Webhook secret generation-on-first-start + persistence (`AppSecretDB`) +
+      one-time display via the API
+- [x] `ha_webhook_secret` config option override path
+- [x] `Todo` model: `assignee_id`, `source`, `source_ref` (deferred since Phase 1);
+      `GET /api/todos` gained `assignee_id`/`mine` filters
+
+**Gap-fill decisions / deviations from the original design:**
+- **No call to `/core/api/config/auth/current_user`.** `SUPERVISOR_TOKEN`
+  authenticates as the Supervisor/add-on, not as the browsing human, so that endpoint
+  can't resolve "who's asking" per-request. `X-Ingress-User` already carries the HA
+  user id directly; `get_current_user` looks up/creates a `Person` from it (display
+  name backfilled by the next person sync once a matching `person.*` entity with the
+  same `user_id` is found).
+- **Webhook "not configured" `501` no longer applies.** Since a secret is now always
+  auto-generated and persisted on first access (`get_effective_secret`), there's no
+  state where no secret exists — every webhook call validates against something.
+- **New `503`** (`POST /api/persons/sync`, upstream Supervisor unreachable) added
+  alongside the previously-documented `404`/`422`/`501` exceptions to the root
+  AGENTS.md's strict status-code list — same category as the existing `501`
+  carve-out (external-dependency-not-available), not a new pattern.
+- **Person-sync scheduler tick swallows and logs exceptions** (`Supervisor
+  unreachable?` warning) instead of propagating — otherwise the loop would die after
+  one failure in any environment without a real Supervisor (which is every local/dev
+  environment, including this monorepo's `bam serve`/`docker-serve`).
+- **Found via real Docker container testing (not just `bam ci-checks`):**
+  `person_sync_interval_hours`/`materialise_interval_minutes` were declared in
+  `config.yaml` since Phase 0/2 but never actually wired through `run.sh`/`cli.py` —
+  changing those add-on options in the HA UI had zero effect. Fixed by adding the
+  matching CLI flags and `bashio::config` reads. While fixing it, found that
+  `bashio::config` can hand back an empty string instead of falling back to its own
+  default when the Supervisor API is unreachable (true for every sandbox/local-dev
+  run) — `argparse`'s `type=int` crashed on `int("")`. Fixed by accepting these flags
+  as plain strings and treating falsy values as "not provided", same as the other
+  optional flags; `pydantic-settings` does the int coercion once a real value lands
+  in the env var.
+- **Frontend (assignee picker, persons list, webhook secret display UI) intentionally
+  out of scope for this phase** — backend-only, per the original roadmap bullets.
+  Confirmed with the user that `assignee_id: null` on browser-created todos is
+  expected for now.
 
 **Exit criteria:** An HA automation can create and complete todos via the webhook; the
 "my tasks" filter resolves the logged-in HA user to a `Person`.

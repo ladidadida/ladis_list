@@ -1,4 +1,4 @@
-"""API router for /api/todos (Phase 1 scope: no assignee/recurrence/webhook)."""
+"""API router for /api/todos."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from ..database import get_session
+from ..dependencies import get_current_user
+from ..models.person import PersonDB
 from ..models.todo import TodoCreate, TodoDB, TodoRead, TodoUpdate
 from ..services import todos as svc
 
@@ -22,10 +24,19 @@ def _to_read(session: Session, todo: TodoDB) -> TodoRead:
 def get_todos(
     column_id: uuid.UUID | None = Query(default=None),
     tag_id: uuid.UUID | None = Query(default=None),
+    assignee_id: uuid.UUID | None = Query(default=None),
     overdue: bool | None = Query(default=None),
+    mine: bool = Query(default=False),
+    current_user: PersonDB | None = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> list[TodoRead]:
-    todos = svc.list_todos(session, column_id=column_id, tag_id=tag_id, overdue=overdue)
+    if mine:
+        if current_user is None:
+            return []
+        assignee_id = current_user.id
+    todos = svc.list_todos(
+        session, column_id=column_id, tag_id=tag_id, assignee_id=assignee_id, overdue=overdue
+    )
     return [_to_read(session, todo) for todo in todos]
 
 

@@ -25,6 +25,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--db-path", default=None, help="SQLite DB path (overrides DB_PATH env var)"
     )
     parser.add_argument("--log-level", default=None, help="Log level (overrides LOG_LEVEL env var)")
+    parser.add_argument(
+        "--webhook-secret",
+        default=None,
+        help="HA automation webhook secret (overrides WEBHOOK_SECRET env var)",
+    )
+    parser.add_argument(
+        "--person-sync-interval-hours",
+        # Not type=int: bashio::config can hand run.sh an empty string (e.g. when the
+        # Supervisor API is unreachable, as in local/sandbox testing) instead of
+        # falling back to its own default — int() would crash on "". Treated as
+        # "not provided" below instead, same as the other optional string flags.
+        default=None,
+        help="HA person sync frequency (overrides PERSON_SYNC_INTERVAL_HOURS env var)",
+    )
+    parser.add_argument(
+        "--materialise-interval-minutes",
+        default=None,
+        help="Recurrence materialisation frequency (overrides MATERIALISE_INTERVAL_MINUTES env var)",
+    )
 
     args = parser.parse_args(argv)
 
@@ -37,6 +56,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["PORT"] = str(args.port)
     if args.log_level:
         os.environ["LOG_LEVEL"] = args.log_level
+    if args.webhook_secret:
+        os.environ["WEBHOOK_SECRET"] = args.webhook_secret
+    if args.person_sync_interval_hours:
+        os.environ["PERSON_SYNC_INTERVAL_HOURS"] = args.person_sync_interval_hours
+    if args.materialise_interval_minutes:
+        os.environ["MATERIALISE_INTERVAL_MINUTES"] = args.materialise_interval_minutes
 
     from .settings import get_settings
 

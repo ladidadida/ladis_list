@@ -18,7 +18,8 @@ from starlette.types import ASGIApp
 from . import scheduler
 from .database import create_db_and_tables, get_engine
 from .models.column import ColumnDB
-from .routers import columns, recurrence, tags, todos
+from .routers import columns, persons, recurrence, tags, todos, webhook
+from .services import webhook_secret
 from .settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -92,15 +93,23 @@ def _seed_default_columns() -> None:
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     create_db_and_tables()
     _seed_default_columns()
-    interval = get_settings().materialise_interval_minutes
-    task = asyncio.create_task(scheduler.run_periodic(interval))
+    with Session(get_engine()) as session:
+        webhook_secret.get_effective_secret(session)  # ensure it exists from first start
+
+    settings = get_settings()
+    tasks = [
+        asyncio.create_task(scheduler.run_recurrence_loop(settings.materialise_interval_minutes)),
+        asyncio.create_task(scheduler.run_person_sync_loop(settings.person_sync_interval_hours)),
+    ]
     logger.info("ha-todo-manager started.")
     yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app() -> FastAPI:
@@ -118,6 +127,8 @@ def create_app() -> FastAPI:
     app.include_router(tags.router, prefix="/api")
     app.include_router(todos.router, prefix="/api")
     app.include_router(recurrence.router, prefix="/api")
+    app.include_router(persons.router, prefix="/api")
+    app.include_router(webhook.router, prefix="/api")
 
     # Serve the React SPA when the build artefact is present.
     # Non-editable installs (Docker): frontend is bundled inside the package.

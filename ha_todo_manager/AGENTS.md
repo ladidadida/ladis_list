@@ -16,12 +16,13 @@ prose.
 ## Status
 
 v1 design finalized (this document); implementation is being built incrementally.
-Phases 0–2 are done: packaging, a working REST API for columns/tags/todos (CRUD,
-default columns seeded on start), and RRULE-based recurrence (`/complete` spawns the
-next occurrence for recurring root todos; periodic + manual sweep catches up on
-overdue ones). HA person sync, the webhook endpoint, assignees, and all frontend
-views are **not implemented yet** — follow `spec/roadmap.md` for build order and
-current status.
+Phases 0–3 are done: packaging, a working REST API for columns/tags/todos (CRUD,
+default columns seeded on start), RRULE-based recurrence, and HA integration (person
+sync, `assignee_id` on todos, the `/api/webhook/ha/{secret}` automation endpoint with
+an auto-generated/persisted secret). Phase 4 (frontend) is partially done — Kanban
+board, card detail panel, tag management exist; an assignee picker, persons list, and
+webhook-secret display in the UI are **not implemented yet**. See `spec/roadmap.md`
+for build order, current status, and a few gap-fill decisions made along the way.
 
 ## Technology Stack
 
