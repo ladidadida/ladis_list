@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Column, Tag, Todo } from '../api/client'
+import { usePersons } from '../hooks/usePersons'
 import { useDeleteTodo, useUpdateTodo } from '../hooks/useTodos'
 import { buildRrule, parseRrulePreset, WEEKDAY_LABELS, WEEKDAYS, type RrulePreset } from '../lib/rrule'
 
@@ -15,10 +16,12 @@ interface Props {
 export default function CardDetailPanel({ todo, columns, tags, onClose }: Props) {
   const update = useUpdateTodo()
   const remove = useDeleteTodo()
+  const { data: persons = [] } = usePersons()
 
   const [title, setTitle] = useState(todo.title)
   const [description, setDescription] = useState(todo.description ?? '')
   const [columnId, setColumnId] = useState(todo.column_id)
+  const [assigneeId, setAssigneeId] = useState(todo.assignee_id ?? '')
   const [dueDate, setDueDate] = useState(todo.due_date ?? '')
   const [priority, setPriority] = useState(todo.priority)
   const [tagIds, setTagIds] = useState<string[]>(todo.tag_ids)
@@ -56,6 +59,7 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
           title: trimmed,
           description: description.trim() || null,
           column_id: columnId,
+          assignee_id: assigneeId || null,
           due_date: dueDate || null,
           priority,
           rrule: buildRrule(preset),
@@ -125,12 +129,26 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
               ))}
             </select>
           </div>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <select
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <option value="">Niemand zugewiesen</option>
+              {persons.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2">

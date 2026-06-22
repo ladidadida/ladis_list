@@ -9,17 +9,19 @@ import {
   type TodoUpdate,
 } from '../api/client'
 
-export const TODOS_KEY = ['todos'] as const
+const TODOS_BASE_KEY = ['todos'] as const
+export const TODOS_KEY = (mine?: boolean) =>
+  mine ? ([...TODOS_BASE_KEY, { mine: true }] as const) : TODOS_BASE_KEY
 
-export function useTodos() {
-  return useQuery({ queryKey: TODOS_KEY, queryFn: fetchTodos })
+export function useTodos(mine?: boolean) {
+  return useQuery({ queryKey: TODOS_KEY(mine), queryFn: () => fetchTodos(mine) })
 }
 
 export function useCreateTodo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: TodoCreate) => createTodo(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_BASE_KEY }),
   })
 }
 
@@ -27,7 +29,7 @@ export function useUpdateTodo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: TodoUpdate }) => updateTodo(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_BASE_KEY }),
   })
 }
 
@@ -35,7 +37,7 @@ export function useCompleteTodo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => completeTodo(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_BASE_KEY }),
   })
 }
 
@@ -43,7 +45,7 @@ export function useDeleteTodo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteTodo(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_BASE_KEY }),
   })
 }
 
@@ -55,6 +57,6 @@ export function useMoveTodo() {
     mutationFn: async (updates: { id: string; data: TodoUpdate }[]) => {
       await Promise.all(updates.map(({ id, data }) => updateTodo(id, data)))
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_KEY }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TODOS_BASE_KEY }),
   })
 }

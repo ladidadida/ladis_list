@@ -1,8 +1,10 @@
-"""Person DB table model and read schema.
+"""Person DB table model and request/response schemas.
 
-No PersonCreate schema: persons are only ever created internally, either by HA person
-sync (`services/persons.sync_persons`) or lazily on first request from a not-yet-seen
-HA user (`services/persons.get_or_create_by_ha_user_id`) — never via a public POST.
+Persons are created three ways: HA person sync (`services/persons.sync_persons`),
+lazily on first request from a not-yet-seen HA user
+(`services/persons.get_or_create_by_ha_user_id`), or manually via `PersonCreate` for
+people without an HA account (e.g. household members HA doesn't know about). Manual
+persons have `ha_user_id`/`ha_person_entity_id` left `None`.
 """
 
 from __future__ import annotations
@@ -26,6 +28,11 @@ class PersonDB(PersonBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     ha_user_id: str | None = Field(default=None, unique=True)
     ha_person_entity_id: str | None = Field(default=None, unique=True)
+
+
+class PersonCreate(SQLModel):
+    display_name: str = Field(min_length=1, max_length=100)
+    avatar_url: str | None = None
 
 
 class PersonRead(PersonBase):

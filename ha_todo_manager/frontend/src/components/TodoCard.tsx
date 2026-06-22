@@ -1,14 +1,24 @@
 import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core'
-import type { Column, Tag, Todo } from '../api/client'
+import type { Column, Person, Tag, Todo } from '../api/client'
 import { useCompleteTodo, useDeleteTodo } from '../hooks/useTodos'
 
 const PRIORITY_LABELS = ['', 'Niedrig', 'Mittel', 'Hoch']
 const PRIORITY_COLORS = ['', 'bg-blue-100 text-blue-700', 'bg-amber-100 text-amber-700', 'bg-red-100 text-red-700']
 
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
+}
+
 interface Props {
   todo: Todo
   columns: Column[]
   tags: Tag[]
+  persons: Person[]
   dragHandleAttributes?: DraggableAttributes
   dragHandleListeners?: DraggableSyntheticListeners
   onEdit?: (id: string) => void
@@ -18,6 +28,7 @@ export default function TodoCard({
   todo,
   columns,
   tags,
+  persons,
   dragHandleAttributes,
   dragHandleListeners,
   onEdit,
@@ -28,6 +39,7 @@ export default function TodoCard({
   const todoTags = tags.filter((t) => todo.tag_ids.includes(t.id))
   const column = columns.find((c) => c.id === todo.column_id)
   const isDone = column?.is_terminal ?? false
+  const assignee = persons.find((p) => p.id === todo.assignee_id)
 
   return (
     <div className="flex items-start gap-2 p-3 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -51,6 +63,14 @@ export default function TodoCard({
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
+          {assignee && (
+            <span
+              title={assignee.display_name}
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700"
+            >
+              {initials(assignee.display_name)}
+            </span>
+          )}
           <span className={`text-sm ${isDone ? 'line-through text-gray-400' : 'text-gray-800'}`}>
             {todo.title}
           </span>

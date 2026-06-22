@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Column, Tag } from '../api/client'
+import { usePersons } from '../hooks/usePersons'
 import { useCreateTodo } from '../hooks/useTodos'
 
 const PRIORITY_LABELS = ['Keine', 'Niedrig', 'Mittel', 'Hoch']
@@ -12,11 +13,13 @@ interface Props {
 export default function AddTodoForm({ columns, tags }: Props) {
   const [title, setTitle] = useState('')
   const [columnId, setColumnId] = useState('')
+  const [assigneeId, setAssigneeId] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState(0)
   const [rrule, setRrule] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
   const createTodo = useCreateTodo()
+  const { data: persons = [] } = usePersons()
 
   const activeColumnId = columnId || columns[0]?.id
 
@@ -32,6 +35,7 @@ export default function AddTodoForm({ columns, tags }: Props) {
       {
         title: trimmed,
         column_id: activeColumnId,
+        assignee_id: assigneeId || undefined,
         due_date: dueDate || undefined,
         priority,
         rrule: rrule.trim() || undefined,
@@ -40,6 +44,7 @@ export default function AddTodoForm({ columns, tags }: Props) {
       {
         onSuccess: () => {
           setTitle('')
+          setAssigneeId('')
           setDueDate('')
           setPriority(0)
           setRrule('')
@@ -88,6 +93,18 @@ export default function AddTodoForm({ columns, tags }: Props) {
           {PRIORITY_LABELS.map((label, value) => (
             <option key={value} value={value}>
               {label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={assigneeId}
+          onChange={(e) => setAssigneeId(e.target.value)}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          <option value="">Niemand zugewiesen</option>
+          {persons.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.display_name}
             </option>
           ))}
         </select>

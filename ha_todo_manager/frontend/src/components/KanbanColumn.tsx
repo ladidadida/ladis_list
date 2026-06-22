@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { Column, Tag, Todo } from '../api/client'
+import type { Column, Person, Tag, Todo } from '../api/client'
 import SortableTodoCard from './SortableTodoCard'
 
 interface Props {
@@ -8,10 +8,11 @@ interface Props {
   todos: Todo[]
   columns: Column[]
   tags: Tag[]
+  persons: Person[]
   onEdit: (id: string) => void
 }
 
-export default function KanbanColumn({ column, todos, columns, tags, onEdit }: Props) {
+export default function KanbanColumn({ column, todos, columns, tags, persons, onEdit }: Props) {
   const { setNodeRef } = useDroppable({ id: column.id })
 
   return (
@@ -22,7 +23,14 @@ export default function KanbanColumn({ column, todos, columns, tags, onEdit }: P
       <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <ul ref={setNodeRef} className="flex flex-col gap-2 min-h-[3rem]">
           {todos.map((todo) => (
-            <SortableTodoCard key={todo.id} todo={todo} columns={columns} tags={tags} onEdit={onEdit} />
+            <SortableTodoCard
+              key={todo.id}
+              todo={todo}
+              columns={columns}
+              tags={tags}
+              persons={persons}
+              onEdit={onEdit}
+            />
           ))}
           {todos.length === 0 && (
             <li className="text-xs text-gray-400 py-3 text-center border border-dashed border-gray-200 rounded-lg">

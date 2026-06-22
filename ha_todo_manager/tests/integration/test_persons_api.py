@@ -76,3 +76,51 @@ def test_sync_persons_supervisor_unreachable_returns_503(
 
     response = client.post("/api/persons/sync")
     assert response.status_code == 503
+
+
+@pytest.mark.integration
+def test_create_person_manually(client: TestClient) -> None:
+    response = client.post("/api/persons", json={"display_name": "Guest"})
+    assert response.status_code == 201
+    body = response.json()
+    assert body["display_name"] == "Guest"
+    assert body["ha_user_id"] is None
+    assert body["ha_person_entity_id"] is None
+
+
+@pytest.mark.integration
+def test_create_person_empty_name_rejected(client: TestClient) -> None:
+    response = client.post("/api/persons", json={"display_name": ""})
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_delete_person(client: TestClient) -> None:
+    person_id = client.post("/api/persons", json={"display_name": "Temp"}).json()["id"]
+    response = client.delete(f"/api/persons/{person_id}")
+    assert response.status_code == 204
+
+    ids = [p["id"] for p in client.get("/api/persons").json()]
+    assert person_id not in ids
+
+
+@pytest.mark.integration
+def test_delete_person_not_found(client: TestClient) -> None:
+    response = client.delete("/api/persons/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_delete_person_unassigns_todos(client: TestClient) -> None:
+    person_id = client.post("/api/persons", json={"display_name": "Assignee"}).json()["id"]
+    column_id = client.get("/api/columns").json()[0]["id"]
+    todo_id = client.post(
+        "/api/todos",
+        json={"title": "Assigned", "column_id": column_id, "assignee_id": person_id},
+    ).json()["id"]
+
+    response = client.delete(f"/api/persons/{person_id}")
+    assert response.status_code == 204
+
+    todo = client.get(f"/api/todos/{todo_id}").json()
+    assert todo["assignee_id"] is None

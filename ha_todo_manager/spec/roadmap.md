@@ -145,7 +145,10 @@ container catches up on overdue recurrences on startup.
 - **Frontend (assignee picker, persons list, webhook secret display UI) intentionally
   out of scope for this phase** — backend-only, per the original roadmap bullets.
   Confirmed with the user that `assignee_id: null` on browser-created todos is
-  expected for now.
+  expected for now. Built as a follow-up in Phase 4 (see below), including manual
+  person creation — a deliberate extension beyond the original "no PersonCreate, ever"
+  design, requested by the user so household members without an HA account can be
+  assigned todos too.
 
 **Exit criteria:** An HA automation can create and complete todos via the webhook; the
 "my tasks" filter resolves the logged-in HA user to a `Person`.
@@ -179,7 +182,14 @@ for manual testing of columns/tags/todos/recurrence sooner.
       RRULE), opened via a ✏️ button on the card. The card's inline column `<select>`
       was removed once this and drag-and-drop both covered moving a todo between
       columns — keeping all three was redundant (user feedback after testing).
-- [ ] Settings page (column management, persons read-only, webhook secret display)
+- [x] HA-integration frontend follow-up: assignee `<select>` on `AddTodoForm` and
+      `CardDetailPanel`; assignee-initials badge on `TodoCard`; `PersonsPanel`
+      (sync button + **manual person creation/deletion**, extending the backend
+      beyond the original "no PersonCreate" design — see Phase 3 gap-fill note);
+      `WebhookSecretPanel` (one-time reveal + copy button, self-hides once shown);
+      "Nur meine Aufgaben" header toggle wired to the `mine` filter. These are
+      standalone panels next to `TagManager`, not a full Settings page.
+- [ ] Settings page (column management — currently only the above standalone panels)
 - [ ] React Router v6 (hash-based) once there's more than one view
 
 **Found during manual check (list-view iteration):** creating a todo with `rrule`
@@ -195,7 +205,9 @@ a code bug — an earlier `bam serve` process from the previous iteration was ne
 actually killed (`pkill` had silently missed it), so it kept holding port 8100; a
 second `bam serve` start failed to bind and exited, while the stale process kept
 serving the old build. Fixed by `kill -9`-ing the stale PID (verified via `ss -tlnp`)
-and starting a genuinely fresh process.
+and starting a genuinely fresh process. Recurred once more in the persons/assignee
+follow-up — now standard practice before every `bam serve` restart in this project:
+`ss -tlnp | grep 8100` first, `kill -9` anything still bound, only then start.
 
 **Exit criteria:** All v1 user stories from `AGENTS.md` completable in the browser
 without console errors on a mobile viewport.

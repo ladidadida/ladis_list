@@ -2,14 +2,40 @@
 
 from __future__ import annotations
 
+import uuid
+
 from sqlmodel import Session, select
 
 from ..ha_client import PersonInfo
-from ..models.person import PersonDB
+from ..models.person import PersonCreate, PersonDB
+from ..models.todo import TodoDB
 
 
 def list_persons(session: Session) -> list[PersonDB]:
     return list(session.exec(select(PersonDB).order_by(PersonDB.display_name)).all())  # type: ignore[arg-type]
+
+
+def create_person(session: Session, data: PersonCreate) -> PersonDB:
+    """Manually add a person without an HA account (ha_user_id/ha_person_entity_id unset)."""
+    person = PersonDB.model_validate(data)
+    session.add(person)
+    session.commit()
+    session.refresh(person)
+    return person
+
+
+def delete_person(session: Session, person_id: uuid.UUID) -> bool:
+    """Delete a person, unassigning (not blocking) any todos currently assigned to them."""
+    person = session.get(PersonDB, person_id)
+    if person is None:
+        return False
+    assigned = session.exec(select(TodoDB).where(TodoDB.assignee_id == person_id)).all()
+    for todo in assigned:
+        todo.assignee_id = None
+        session.add(todo)
+    session.delete(person)
+    session.commit()
+    return True
 
 
 def get_or_create_by_ha_user_id(session: Session, ha_user_id: str) -> PersonDB:

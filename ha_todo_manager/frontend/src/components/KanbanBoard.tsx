@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import type { Column, Tag, Todo, TodoUpdate } from '../api/client'
+import type { Column, Person, Tag, Todo, TodoUpdate } from '../api/client'
 import { useMoveTodo } from '../hooks/useTodos'
 import KanbanColumn from './KanbanColumn'
 
@@ -17,10 +17,11 @@ interface Props {
   columns: Column[]
   todos: Todo[]
   tags: Tag[]
+  persons: Person[]
   onEdit: (id: string) => void
 }
 
-export default function KanbanBoard({ columns, todos, tags, onEdit }: Props) {
+export default function KanbanBoard({ columns, todos, tags, persons, onEdit }: Props) {
   const moveTodo = useMoveTodo()
 
   const sensors = useSensors(
@@ -80,6 +81,7 @@ export default function KanbanBoard({ columns, todos, tags, onEdit }: Props) {
             todos={todosForColumn(column.id)}
             columns={columns}
             tags={tags}
+            persons={persons}
             onEdit={onEdit}
           />
         ))}
