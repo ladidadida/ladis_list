@@ -19,9 +19,10 @@ interface Props {
   tags: Tag[]
   persons: Person[]
   onEdit: (id: string) => void
+  onAddNew: (columnId: string) => void
 }
 
-export default function KanbanBoard({ columns, todos, tags, persons, onEdit }: Props) {
+export default function KanbanBoard({ columns, todos, tags, persons, onEdit, onAddNew }: Props) {
   const moveTodo = useMoveTodo()
 
   const sensors = useSensors(
@@ -83,6 +84,7 @@ export default function KanbanBoard({ columns, todos, tags, persons, onEdit }: P
             tags={tags}
             persons={persons}
             onEdit={onEdit}
+            onAddNew={onAddNew}
           />
         ))}
       </div>

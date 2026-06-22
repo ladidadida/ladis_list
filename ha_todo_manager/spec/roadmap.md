@@ -187,10 +187,23 @@ for manual testing of columns/tags/todos/recurrence sooner.
       (sync button + **manual person creation/deletion**, extending the backend
       beyond the original "no PersonCreate" design — see Phase 3 gap-fill note);
       `WebhookSecretPanel` (one-time reveal + copy button, self-hides once shown);
-      "Nur meine Aufgaben" header toggle wired to the `mine` filter. These are
-      standalone panels next to `TagManager`, not a full Settings page.
-- [ ] Settings page (column management — currently only the above standalone panels)
-- [ ] React Router v6 (hash-based) once there's more than one view
+      "Nur meine Aufgaben" header toggle wired to the `mine` filter. These were
+      standalone panels next to `TagManager` on the board page at the time — moved to
+      their own page below.
+- [x] **Settings page** — `react-router-dom` (`HashRouter`, matching the v6 the design
+      called for) finally added at the trigger point the roadmap anticipated ("once
+      there's more than one view"). Two routes: `/` (`pages/BoardPage.tsx`) and
+      `/settings` (`pages/SettingsPage.tsx`, hosting `WebhookSecretPanel`,
+      `TagManager`, `PersonsPanel`). Shared `components/Header.tsx` with a nav link
+      that flips between the two. Column management itself (rename/reorder/delete)
+      is still not in the UI — only the panels that already existed are relocated.
+- [x] React Router v6 (hash-based) — see above, done together with the Settings page.
+- [x] `AddTodoForm` removed — replaced by a "+" button in each Kanban column header
+      that opens `CardDetailPanel` in a new "create" mode (`todo` prop now optional;
+      undefined means create, pre-filled with the clicked column via
+      `defaultColumnId`). One widget for both creating and editing instead of a
+      separate inline form, per user feedback that the form felt redundant next to
+      the detail panel.
 
 **Found during manual check (list-view iteration):** creating a todo with `rrule`
 failed with `sqlite3.OperationalError: table todo has no column named rrule` — not a

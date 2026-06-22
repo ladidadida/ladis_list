@@ -1,31 +1,37 @@
 import { useState } from 'react'
 import type { Column, Tag, Todo } from '../api/client'
 import { usePersons } from '../hooks/usePersons'
-import { useDeleteTodo, useUpdateTodo } from '../hooks/useTodos'
+import { useCreateTodo, useDeleteTodo, useUpdateTodo } from '../hooks/useTodos'
 import { buildRrule, parseRrulePreset, WEEKDAY_LABELS, WEEKDAYS, type RrulePreset } from '../lib/rrule'
 
 const PRIORITY_LABELS = ['Keine', 'Niedrig', 'Mittel', 'Hoch']
 
 interface Props {
-  todo: Todo
+  // Omit `todo` to open the panel in "new todo" mode instead of editing.
+  todo?: Todo
+  defaultColumnId?: string
   columns: Column[]
   tags: Tag[]
   onClose: () => void
 }
 
-export default function CardDetailPanel({ todo, columns, tags, onClose }: Props) {
+export default function CardDetailPanel({ todo, defaultColumnId, columns, tags, onClose }: Props) {
+  const isNew = todo === undefined
+  const create = useCreateTodo()
   const update = useUpdateTodo()
   const remove = useDeleteTodo()
   const { data: persons = [] } = usePersons()
 
-  const [title, setTitle] = useState(todo.title)
-  const [description, setDescription] = useState(todo.description ?? '')
-  const [columnId, setColumnId] = useState(todo.column_id)
-  const [assigneeId, setAssigneeId] = useState(todo.assignee_id ?? '')
-  const [dueDate, setDueDate] = useState(todo.due_date ?? '')
-  const [priority, setPriority] = useState(todo.priority)
-  const [tagIds, setTagIds] = useState<string[]>(todo.tag_ids)
-  const [preset, setPreset] = useState<RrulePreset>(() => parseRrulePreset(todo.rrule))
+  const [title, setTitle] = useState(todo?.title ?? '')
+  const [description, setDescription] = useState(todo?.description ?? '')
+  const [columnId, setColumnId] = useState(todo?.column_id ?? defaultColumnId ?? columns[0]?.id ?? '')
+  const [assigneeId, setAssigneeId] = useState(todo?.assignee_id ?? '')
+  const [dueDate, setDueDate] = useState(todo?.due_date ?? '')
+  const [priority, setPriority] = useState(todo?.priority ?? 0)
+  const [tagIds, setTagIds] = useState<string[]>(todo?.tag_ids ?? [])
+  const [preset, setPreset] = useState<RrulePreset>(() => parseRrulePreset(todo?.rrule ?? null))
+
+  const saving = create.isPending || update.isPending
 
   function toggleTag(id: string) {
     setTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
@@ -41,7 +47,7 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
 
   function handlePresetKindChange(kind: RrulePreset['kind']) {
     if (kind === 'weekly') setPreset({ kind: 'weekly', days: [] })
-    else if (kind === 'custom') setPreset({ kind: 'custom', raw: todo.rrule ?? '' })
+    else if (kind === 'custom') setPreset({ kind: 'custom', raw: todo?.rrule ?? '' })
     else if (kind === 'none') setPreset({ kind: 'none' })
     else if (kind === 'daily') setPreset({ kind: 'daily' })
     else if (kind === 'monthly') setPreset({ kind: 'monthly' })
@@ -51,7 +57,25 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
-    if (!trimmed) return
+    if (!trimmed || !columnId) return
+
+    if (isNew) {
+      create.mutate(
+        {
+          title: trimmed,
+          description: description.trim() || undefined,
+          column_id: columnId,
+          assignee_id: assigneeId || undefined,
+          due_date: dueDate || undefined,
+          priority,
+          rrule: buildRrule(preset) ?? undefined,
+          tag_ids: tagIds,
+        },
+        { onSuccess: onClose },
+      )
+      return
+    }
+
     update.mutate(
       {
         id: todo.id,
@@ -71,6 +95,7 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
   }
 
   function handleDelete() {
+    if (isNew) return
     remove.mutate(todo.id, { onSuccess: onClose })
   }
 
@@ -79,7 +104,7 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <aside className="relative z-50 w-full max-w-md bg-white h-full shadow-xl flex flex-col overflow-y-auto">
         <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">Todo bearbeiten</h2>
+          <h2 className="font-semibold text-gray-800">{isNew ? 'Neues Todo' : 'Todo bearbeiten'}</h2>
           <button
             onClick={onClose}
             aria-label="Schließen"
@@ -96,6 +121,7 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Titel"
             required
+            autoFocus={isNew}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <textarea
@@ -214,14 +240,18 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
           </div>
 
           <div className="mt-auto flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={remove.isPending}
-              className="px-3 py-1.5 rounded-lg text-red-400 hover:text-red-600 text-sm transition-colors disabled:opacity-50"
-            >
-              Löschen
-            </button>
+            {isNew ? (
+              <span />
+            ) : (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={remove.isPending}
+                className="px-3 py-1.5 rounded-lg text-red-400 hover:text-red-600 text-sm transition-colors disabled:opacity-50"
+              >
+                Löschen
+              </button>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -232,10 +262,10 @@ export default function CardDetailPanel({ todo, columns, tags, onClose }: Props)
               </button>
               <button
                 type="submit"
-                disabled={update.isPending || !title.trim()}
+                disabled={saving || !title.trim()}
                 className="px-4 py-1.5 rounded-lg bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 disabled:opacity-50 transition-colors"
               >
-                {update.isPending ? '…' : 'Speichern'}
+                {saving ? '…' : isNew ? 'Hinzufügen' : 'Speichern'}
               </button>
             </div>
           </div>
