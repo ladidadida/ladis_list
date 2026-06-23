@@ -229,8 +229,10 @@ without console errors on a mobile viewport.
 
 ## Phase 5 – HA Add-on Polish 🔄
 
-- [ ] Real icon/logo artwork
-- [ ] `DOCS.md` rewritten with actual installation/usage instructions
+- [x] Real icon/logo artwork — `icon.png` (128×128) and `logo.png` (250×100) were
+      already added in the initial scaffold commit (`83014d4`), not placeholders.
+- [x] `DOCS.md` rewritten with actual installation/usage instructions, replacing the
+      pre-release placeholder.
 - [ ] Manual smoke-test on a real HA instance (amd64 + aarch64)
 - [x] `600` permissions on `/data/todo.db`, matching `ha_shopping_list`'s convention
       (`_ensure_db_permissions()` in `app.py`'s lifespan, same pattern as
