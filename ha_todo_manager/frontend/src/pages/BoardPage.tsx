@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import CardDetailPanel from '../components/CardDetailPanel'
 import Header from '../components/Header'
 import KanbanBoard from '../components/KanbanBoard'
+import { useBoards } from '../hooks/useBoards'
 import { useColumns } from '../hooks/useColumns'
 import { usePersons } from '../hooks/usePersons'
 import { useTags } from '../hooks/useTags'
@@ -10,11 +12,14 @@ import { useTodos } from '../hooks/useTodos'
 type Panel = { mode: 'edit'; todoId: string } | { mode: 'create'; columnId: string } | null
 
 export default function BoardPage() {
-  const { data: columns = [], isLoading: columnsLoading } = useColumns()
+  const { boardId = '' } = useParams<{ boardId: string }>()
+  const navigate = useNavigate()
+  const { data: boards = [] } = useBoards()
+  const { data: columns = [], isLoading: columnsLoading } = useColumns(boardId)
   const { data: tags = [] } = useTags()
   const { data: persons = [] } = usePersons()
   const [mineOnly, setMineOnly] = useState(false)
-  const { data: todos = [], isLoading: todosLoading } = useTodos(mineOnly)
+  const { data: todos = [], isLoading: todosLoading } = useTodos(boardId, mineOnly)
   const [panel, setPanel] = useState<Panel>(null)
 
   const loading = columnsLoading || todosLoading
@@ -24,6 +29,19 @@ export default function BoardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header>
+        {boards.length > 1 && (
+          <select
+            value={boardId}
+            onChange={(e) => navigate(`/board/${e.target.value}`)}
+            className="rounded-lg border border-gray-200 px-2 py-1 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            {boards.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        )}
         <label className="flex items-center gap-2 text-sm text-gray-600">
           <input
             type="checkbox"

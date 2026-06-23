@@ -236,13 +236,12 @@ without console errors on a mobile viewport.
 
 ---
 
-## Phase 6 – Multi-Board Support 🔄
+## Phase 6 – Multi-Board Support ✅
 
 User-prioritised ahead of Phase 5 (column-management UI explicitly judged "not
 important" — it can stay Swagger-only) and ahead of the originally-deferred "Out of
 Scope (v1)" status: multi-board was listed as out of scope, but the user asked for it
-explicitly once everything else was in place. Backend done in this iteration; frontend
-(board switcher + boards panel) is a follow-up.
+explicitly once everything else was in place.
 
 **Decisions (confirmed with the user):**
 - Tags and persons stay **global**, shared across all boards — only columns (and
@@ -273,9 +272,24 @@ explicitly once everything else was in place. Backend done in this iteration; fr
 - [x] Webhook payload gains optional `board_name` (string, human-typable — not a
       UUID); omitted defaults to the first board by position, so existing
       single-board automations keep working unchanged. Unknown name → `422`.
-- [ ] Frontend: board switcher (header `<select>`, likely via a `/board/:boardId`
-      route param now that the router exists) + a `BoardsPanel.tsx` on the Settings
-      page (create/rename/delete, with a confirm dialog before cascading delete).
+- [x] Frontend: board switcher (header `<select>`, via a `/board/:boardId` route
+      param) + `BoardsPanel.tsx` on the Settings page (create/rename/delete, with a
+      confirm dialog before cascading delete). `RootRedirect` sends `/` to the first
+      board by position.
+- [x] **Bug found during manual check:** `create_board` never assigned a `position`
+      (always defaulted to `0`), so every new board tied with the first one and board
+      order was effectively undefined. Fixed to assign `max(existing) + 1`.
+- [x] **Considered and rejected during manual check:** defaulting the "Nur meine
+      Aufgaben" filter to on for the first board. Reverted — `mine=true` is a strict
+      assignee match (no special-casing for unassigned todos, by earlier design) and
+      there's no reliable way to know upfront whether it resolves to anything, so newly
+      created/unassigned todos were disappearing from the default board. Filter stays
+      unchecked by default everywhere, same as before this phase.
+- [x] **Considered and rejected:** making one board aggregate tickets from every board
+      ("All ToDos" view). Conflicts with the board-independence exit criterion below
+      and raises unresolved questions (which board's columns does a foreign ticket
+      render under? what does dragging it do?). Boards can still be renamed freely via
+      `BoardsPanel` if a clearer name (e.g. "Default") is wanted.
 
 **Exit criteria:** Multiple boards can be created and used independently (separate
 columns/todos), with shared tags/persons across all of them; deleting a board cleans

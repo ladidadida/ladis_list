@@ -46,6 +46,8 @@ def create_board(session: Session, data: BoardCreate) -> BoardDB:
     """New boards get the same default columns as the very first one, so they're
     immediately usable."""
     board = BoardDB.model_validate(data)
+    existing_positions = session.exec(select(BoardDB.position)).all()
+    board.position = max(existing_positions, default=-1) + 1
     session.add(board)
     session.commit()
     session.refresh(board)

@@ -6,8 +6,25 @@ export const API_BASE = `${BASE}/api`
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface Board {
+  id: string
+  name: string
+  position: number
+}
+
+export interface BoardCreate {
+  name: string
+  position?: number
+}
+
+export interface BoardUpdate {
+  name?: string
+  position?: number
+}
+
 export interface Column {
   id: string
+  board_id: string
   name: string
   position: number
   is_terminal: boolean
@@ -96,9 +113,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+// ─── Boards ───────────────────────────────────────────────────────────────────
+
+export const fetchBoards = () => request<Board[]>('/boards')
+
+export const createBoard = (data: BoardCreate) =>
+  request<Board>('/boards', { method: 'POST', body: JSON.stringify(data) })
+
+export const updateBoard = (id: string, data: BoardUpdate) =>
+  request<Board>(`/boards/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+
+export const deleteBoard = (id: string) => request<void>(`/boards/${id}`, { method: 'DELETE' })
+
 // ─── Columns ──────────────────────────────────────────────────────────────────
 
-export const fetchColumns = () => request<Column[]>('/columns')
+export const fetchColumns = (boardId: string) =>
+  request<Column[]>(`/columns?board_id=${boardId}`)
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 
@@ -135,8 +165,11 @@ export async function fetchWebhookSecret(): Promise<string | null> {
 
 // ─── Todos ────────────────────────────────────────────────────────────────────
 
-export const fetchTodos = (mine?: boolean) =>
-  request<Todo[]>(mine ? '/todos?mine=true' : '/todos')
+export const fetchTodos = (boardId: string, mine?: boolean) => {
+  const qs = new URLSearchParams({ board_id: boardId })
+  if (mine) qs.set('mine', 'true')
+  return request<Todo[]>(`/todos?${qs}`)
+}
 
 export const createTodo = (data: TodoCreate) =>
   request<Todo>('/todos', { method: 'POST', body: JSON.stringify(data) })

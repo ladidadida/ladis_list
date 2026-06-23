@@ -10,11 +10,15 @@ import {
 } from '../api/client'
 
 const TODOS_BASE_KEY = ['todos'] as const
-export const TODOS_KEY = (mine?: boolean) =>
-  mine ? ([...TODOS_BASE_KEY, { mine: true }] as const) : TODOS_BASE_KEY
+export const TODOS_KEY = (boardId: string, mine?: boolean) =>
+  mine ? ([...TODOS_BASE_KEY, boardId, { mine: true }] as const) : ([...TODOS_BASE_KEY, boardId] as const)
 
-export function useTodos(mine?: boolean) {
-  return useQuery({ queryKey: TODOS_KEY(mine), queryFn: () => fetchTodos(mine) })
+export function useTodos(boardId: string, mine?: boolean) {
+  return useQuery({
+    queryKey: TODOS_KEY(boardId, mine),
+    queryFn: () => fetchTodos(boardId, mine),
+    enabled: Boolean(boardId),
+  })
 }
 
 export function useCreateTodo() {

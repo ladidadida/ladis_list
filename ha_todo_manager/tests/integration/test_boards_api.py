@@ -27,6 +27,17 @@ def test_create_board_seeds_default_columns(client: TestClient) -> None:
 
 
 @pytest.mark.integration
+def test_create_board_assigns_increasing_position(client: TestClient) -> None:
+    second = client.post("/api/boards", json={"name": "Second"}).json()
+    third = client.post("/api/boards", json={"name": "Third"}).json()
+
+    boards = client.get("/api/boards").json()
+    assert [b["name"] for b in boards] == ["Board", "Second", "Third"]
+    assert second["position"] == 1
+    assert third["position"] == 2
+
+
+@pytest.mark.integration
 def test_columns_scoped_per_board(client: TestClient) -> None:
     first_board_id = client.get("/api/boards").json()[0]["id"]
     second_board = client.post("/api/boards", json={"name": "Second"}).json()
