@@ -29,6 +29,17 @@ def test_main_passes_host_and_port(monkeypatch) -> None:
     assert kwargs["port"] == 9000
 
 
+def test_main_passes_api_key(monkeypatch) -> None:
+    """CLI --api-key flag is forwarded to Settings (and thus the API key middleware)."""
+    import ha_shopping_list.settings as settings_mod
+
+    monkeypatch.setattr(settings_mod, "_settings", None)
+    with patch("uvicorn.run"):
+        result = main(["--api-key", "s3cret"])
+    assert result == 0
+    assert settings_mod.get_settings().api_key == "s3cret"
+
+
 def test_main_help() -> None:
     """--help exits with code 0."""
     try:

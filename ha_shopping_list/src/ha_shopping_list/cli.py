@@ -25,6 +25,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--db-path", default=None, help="SQLite DB path (overrides DB_PATH env var)"
     )
     parser.add_argument("--log-level", default=None, help="Log level (overrides LOG_LEVEL env var)")
+    parser.add_argument("--api-key", default=None, help="REST API key (overrides API_KEY env var)")
 
     args = parser.parse_args(argv)
 
@@ -37,6 +38,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["PORT"] = str(args.port)
     if args.log_level:
         os.environ["LOG_LEVEL"] = args.log_level
+    if args.api_key:
+        os.environ["API_KEY"] = args.api_key
 
     from .settings import get_settings
 
