@@ -11,14 +11,14 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from sqlmodel import Session, select
+from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
 from . import scheduler
 from .database import create_db_and_tables, get_engine
-from .models.column import ColumnDB
-from .routers import columns, persons, recurrence, tags, todos, webhook
+from .routers import boards, columns, persons, recurrence, tags, todos, webhook
+from .services import boards as boards_svc
 from .services import webhook_secret
 from .settings import get_settings
 
@@ -33,13 +33,6 @@ logger = logging.getLogger(__name__)
 
 _INGRESS_META_PLACEHOLDER = b'content=""'
 _INGRESS_META_TEMPLATE = 'content="{path}"'
-
-_DEFAULT_COLUMNS: list[tuple[str, str, bool]] = [
-    ("Backlog", "backlog", False),
-    ("To Do", "todo", False),
-    ("In Progress", "in_progress", False),
-    ("Done", "done", True),
-]
 
 
 class _IngressPathMiddleware(BaseHTTPMiddleware):
@@ -74,26 +67,11 @@ class _IngressPathMiddleware(BaseHTTPMiddleware):
         return HTMLResponse(content=patched.decode(), status_code=response.status_code)
 
 
-def _seed_default_columns() -> None:
-    with Session(get_engine()) as session:
-        existing = session.exec(select(ColumnDB)).first()
-        if existing is not None:
-            return
-        for position, (name, status_key, is_terminal) in enumerate(_DEFAULT_COLUMNS):
-            session.add(
-                ColumnDB(
-                    name=name, status_key=status_key, position=position, is_terminal=is_terminal
-                )
-            )
-        session.commit()
-    logger.info("Seeded %d default columns.", len(_DEFAULT_COLUMNS))
-
-
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     create_db_and_tables()
-    _seed_default_columns()
     with Session(get_engine()) as session:
+        boards_svc.ensure_default_board(session)
         webhook_secret.get_effective_secret(session)  # ensure it exists from first start
 
     settings = get_settings()
@@ -123,6 +101,7 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    app.include_router(boards.router, prefix="/api")
     app.include_router(columns.router, prefix="/api")
     app.include_router(tags.router, prefix="/api")
     app.include_router(todos.router, prefix="/api")

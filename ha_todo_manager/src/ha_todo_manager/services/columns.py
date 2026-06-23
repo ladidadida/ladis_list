@@ -13,14 +13,25 @@ from ..models.todo import TodoDB
 DeleteResult = Literal["deleted", "not_found", "has_todos"]
 
 
-def list_columns(session: Session) -> list[ColumnDB]:
-    return list(session.exec(select(ColumnDB).order_by(ColumnDB.position)).all())  # type: ignore[arg-type]
+def list_columns(session: Session, board_id: uuid.UUID | None = None) -> list[ColumnDB]:
+    stmt = select(ColumnDB).order_by(ColumnDB.position)  # type: ignore[arg-type]
+    if board_id is not None:
+        stmt = stmt.where(ColumnDB.board_id == board_id)
+    return list(session.exec(stmt).all())
 
 
-def first_non_terminal_column(session: Session) -> ColumnDB | None:
+def first_non_terminal_column(session: Session, board_id: uuid.UUID) -> ColumnDB | None:
     return session.exec(
         select(ColumnDB)
-        .where(ColumnDB.is_terminal == False)  # noqa: E712
+        .where(ColumnDB.board_id == board_id, ColumnDB.is_terminal == False)  # noqa: E712
+        .order_by(ColumnDB.position)  # type: ignore[arg-type]
+    ).first()
+
+
+def first_terminal_column(session: Session, board_id: uuid.UUID) -> ColumnDB | None:
+    return session.exec(
+        select(ColumnDB)
+        .where(ColumnDB.board_id == board_id, ColumnDB.is_terminal == True)  # noqa: E712
         .order_by(ColumnDB.position)  # type: ignore[arg-type]
     ).first()
 

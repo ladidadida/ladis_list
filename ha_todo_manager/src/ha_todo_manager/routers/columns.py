@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
 from ..database import get_session
@@ -15,8 +15,11 @@ router = APIRouter(prefix="/columns", tags=["columns"])
 
 
 @router.get("", response_model=list[ColumnRead])
-def get_columns(session: Session = Depends(get_session)) -> list[ColumnRead]:
-    return svc.list_columns(session)  # type: ignore[return-value]
+def get_columns(
+    board_id: uuid.UUID | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[ColumnRead]:
+    return svc.list_columns(session, board_id=board_id)  # type: ignore[return-value]
 
 
 @router.post("", response_model=ColumnRead, status_code=201)

@@ -13,6 +13,7 @@ from datetime import date, datetime, time
 from dateutil.rrule import rrulestr
 from sqlmodel import Session, select
 
+from ..models.column import ColumnDB
 from ..models.todo import TodoDB
 from ..models.todo_tag import TodoTagDB
 from .columns import first_non_terminal_column
@@ -52,13 +53,20 @@ def materialize_one(session: Session, parent: TodoDB) -> TodoDB:
     if parent.rrule is None or parent.next_due is None:
         raise ValueError("parent must be a recurring todo with next_due set")
 
-    target_column = first_non_terminal_column(session)
+    parent_column = session.get(ColumnDB, parent.column_id)
+    board_id = parent_column.board_id if parent_column else None
+    # Stay within the same board as the parent — a global "first non-terminal
+    # column" lookup would risk moving the new instance onto a different board.
+    target_column = first_non_terminal_column(session, board_id) if board_id else None
     new_todo = TodoDB(
         title=parent.title,
         description=parent.description,
         column_id=target_column.id if target_column else parent.column_id,
+        assignee_id=parent.assignee_id,
         priority=parent.priority,
         rrule=parent.rrule,
+        source=parent.source,
+        source_ref=parent.source_ref,
         recurrence_parent_id=parent.id,
     )
     session.add(new_todo)

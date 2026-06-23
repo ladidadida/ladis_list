@@ -8,9 +8,12 @@ from typing import Literal
 
 from sqlmodel import Session, select
 
+from ..models.board import BoardDB
 from ..models.column import ColumnDB
+from ..models.person import PersonDB
 from ..models.todo import TodoCreate, TodoDB, TodoSource, TodoUpdate
 from ..models.todo_tag import TodoTagDB
+from . import columns as columns_svc
 from . import recurrence
 
 
@@ -19,6 +22,7 @@ def _utcnow() -> datetime:
 
 
 CompleteResult = Literal["not_found", "no_terminal_column"]
+WebhookCreateResult = Literal["unknown_board", "unknown_column"]
 
 
 def get_tag_ids(session: Session, todo_id: uuid.UUID) -> list[uuid.UUID]:
@@ -39,9 +43,14 @@ def list_todos(
     column_id: uuid.UUID | None = None,
     tag_id: uuid.UUID | None = None,
     assignee_id: uuid.UUID | None = None,
+    board_id: uuid.UUID | None = None,
     overdue: bool | None = None,
 ) -> list[TodoDB]:
     stmt = select(TodoDB)
+    if board_id is not None:
+        stmt = stmt.join(ColumnDB, ColumnDB.id == TodoDB.column_id).where(  # type: ignore[arg-type]
+            ColumnDB.board_id == board_id
+        )
     if column_id is not None:
         stmt = stmt.where(TodoDB.column_id == column_id)
     if assignee_id is not None:
@@ -72,6 +81,56 @@ def create_todo(
     session.commit()
     session.refresh(todo)
     return todo
+
+
+def create_from_webhook(
+    session: Session,
+    *,
+    title: str,
+    description: str | None,
+    board_name: str | None,
+    column_status_key: str,
+    assignee_ha_person_entity_id: str | None,
+    due_date: date | None,
+    priority: int,
+    source_ref: str | None,
+) -> TodoDB | WebhookCreateResult:
+    """Resolve board/column/assignee from human-friendly identifiers and create the
+    todo. Kept in the service layer (not the router) per the "no business logic in
+    route handlers" rule, and because the resolution alone was pushing the router past
+    the complexity lint threshold.
+    """
+    if board_name:
+        board = session.exec(select(BoardDB).where(BoardDB.name == board_name)).first()
+    else:
+        board = session.exec(select(BoardDB).order_by(BoardDB.position)).first()  # type: ignore[arg-type]
+    if board is None:
+        return "unknown_board"
+
+    column = session.exec(
+        select(ColumnDB).where(
+            ColumnDB.board_id == board.id, ColumnDB.status_key == column_status_key
+        )
+    ).first()
+    if column is None:
+        return "unknown_column"
+
+    assignee_id = None
+    if assignee_ha_person_entity_id:
+        person = session.exec(
+            select(PersonDB).where(PersonDB.ha_person_entity_id == assignee_ha_person_entity_id)
+        ).first()
+        assignee_id = person.id if person else None
+
+    data = TodoCreate(
+        title=title,
+        description=description,
+        column_id=column.id,
+        assignee_id=assignee_id,
+        due_date=due_date,
+        priority=priority,
+    )
+    return create_todo(session, data, source="ha_webhook", source_ref=source_ref)
 
 
 def get_todo(session: Session, todo_id: uuid.UUID) -> TodoDB | None:
@@ -108,11 +167,12 @@ def complete_todo(session: Session, todo_id: uuid.UUID) -> TodoDB | CompleteResu
     todo = session.get(TodoDB, todo_id)
     if todo is None:
         return "not_found"
-    terminal_column = session.exec(
-        select(ColumnDB)
-        .where(ColumnDB.is_terminal == True)  # noqa: E712
-        .order_by(ColumnDB.position)  # type: ignore[arg-type]
-    ).first()
+    current_column = session.get(ColumnDB, todo.column_id)
+    if current_column is None:
+        return "no_terminal_column"
+    # Stay within the todo's own board — a global "first terminal column" would risk
+    # moving the todo onto a different board's "Done" once boards exist.
+    terminal_column = columns_svc.first_terminal_column(session, current_column.board_id)
     if terminal_column is None:
         return "no_terminal_column"
     todo.column_id = terminal_column.id

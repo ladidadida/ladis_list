@@ -236,6 +236,53 @@ without console errors on a mobile viewport.
 
 ---
 
+## Phase 6 – Multi-Board Support 🔄
+
+User-prioritised ahead of Phase 5 (column-management UI explicitly judged "not
+important" — it can stay Swagger-only) and ahead of the originally-deferred "Out of
+Scope (v1)" status: multi-board was listed as out of scope, but the user asked for it
+explicitly once everything else was in place. Backend done in this iteration; frontend
+(board switcher + boards panel) is a follow-up.
+
+**Decisions (confirmed with the user):**
+- Tags and persons stay **global**, shared across all boards — only columns (and
+  therefore todos) are board-scoped.
+- Deleting a board **cascades** (columns → todos → tag links) rather than blocking
+  until empty; the only remaining board can't be deleted (`422`).
+
+- [x] `models/board.py` (`Board`: `id`, `name`, `position`).
+- [x] `Column` gains `board_id` (FK → `Board`); `status_key` uniqueness moved from
+      globally-unique to **unique per board** (`UniqueConstraint(board_id, status_key)`).
+- [x] `services/boards.py` — CRUD, cascade delete, `ensure_default_board` (replaces the
+      old global `_seed_default_columns` startup hook — now seeds a `Board` *and* its
+      columns). New boards (created by the user, not just the first one) get the same
+      4 default columns seeded automatically.
+- [x] `routers/boards.py` — `GET/POST/PATCH/DELETE /api/boards`.
+- [x] `GET /api/columns` and `GET /api/todos` gain a `board_id` filter.
+- [x] **Correctness fix found while implementing, not by a separate manual check this
+      time:** `complete_todo` and `recurrence.materialize_one` both used to pick a
+      "first terminal/non-terminal column" *globally* — with more than one board that
+      would have silently moved a todo onto a different board's columns. Both are now
+      resolved via the todo's own `column.board_id`
+      (`services/columns.first_terminal_column`/`first_non_terminal_column`, now
+      board-scoped).
+- [x] **Also fixed in passing:** `recurrence.materialize_one` never actually copied
+      `assignee_id`/`source`/`source_ref` onto the materialised instance, despite
+      AGENTS.md's Recurrence Logic section saying it should — a Phase 3 gap that
+      surfaced while touching this function for the board fix.
+- [x] Webhook payload gains optional `board_name` (string, human-typable — not a
+      UUID); omitted defaults to the first board by position, so existing
+      single-board automations keep working unchanged. Unknown name → `422`.
+- [ ] Frontend: board switcher (header `<select>`, likely via a `/board/:boardId`
+      route param now that the router exists) + a `BoardsPanel.tsx` on the Settings
+      page (create/rename/delete, with a confirm dialog before cascading delete).
+
+**Exit criteria:** Multiple boards can be created and used independently (separate
+columns/todos), with shared tags/persons across all of them; deleting a board cleans
+up after itself without orphaning data.
+
+---
+
 ## Known Constraints & Decisions
 
 | Decision | Rationale |

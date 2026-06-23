@@ -102,3 +102,28 @@ def test_completing_a_materialised_instance_does_not_spawn_again(client: TestCli
 
     all_todos_after = client.get("/api/todos").json()
     assert len(all_todos_after) == 2
+
+
+@pytest.mark.integration
+def test_recurrence_stays_on_same_board(client: TestClient) -> None:
+    """Regression: materialising/completing a recurring todo must not move it onto a
+    different board's columns."""
+    second_board = client.post("/api/boards", json={"name": "Second"}).json()
+    second_column_id = client.get(f"/api/columns?board_id={second_board['id']}").json()[0]["id"]
+    todo_id = client.post(
+        "/api/todos",
+        json={
+            "title": "Recurring on second board",
+            "column_id": second_column_id,
+            "rrule": "FREQ=DAILY",
+        },
+    ).json()["id"]
+
+    client.post(f"/api/todos/{todo_id}/complete")
+
+    second_board_columns = {
+        c["id"] for c in client.get(f"/api/columns?board_id={second_board['id']}").json()
+    }
+    all_todos = client.get("/api/todos").json()
+    child = next(t for t in all_todos if t["recurrence_parent_id"] == todo_id)
+    assert child["column_id"] in second_board_columns

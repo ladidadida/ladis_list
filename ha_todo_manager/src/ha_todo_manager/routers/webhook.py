@@ -9,12 +9,9 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from ..database import get_session
-from ..models.column import ColumnDB
-from ..models.person import PersonDB
-from ..models.todo import TodoCreate
 from ..services import todos as todos_svc
 from ..services import webhook_secret as secret_svc
 
@@ -26,6 +23,9 @@ class WebhookPayload(BaseModel):
     title: str | None = None
     description: str | None = None
     assignee_ha_person_entity_id: str | None = None
+    # Omit to target the first board (by position) — fine for the common
+    # single-board setup; only needed once more than one board exists.
+    board_name: str | None = None
     column_status_key: str = "todo"
     due_date: date | None = None
     priority: int = 0
@@ -64,29 +64,22 @@ def post_webhook(
     # action == "create"
     if not payload.title:
         raise HTTPException(status_code=422, detail="title is required for action=create")
-    column = session.exec(
-        select(ColumnDB).where(ColumnDB.status_key == payload.column_status_key)
-    ).first()
-    if column is None:
+
+    result = todos_svc.create_from_webhook(
+        session,
+        title=payload.title,
+        description=payload.description,
+        board_name=payload.board_name,
+        column_status_key=payload.column_status_key,
+        assignee_ha_person_entity_id=payload.assignee_ha_person_entity_id,
+        due_date=payload.due_date,
+        priority=payload.priority,
+        source_ref=payload.source_ref,
+    )
+    if result == "unknown_board":
+        raise HTTPException(status_code=422, detail=f"Unknown board_name {payload.board_name!r}")
+    if result == "unknown_column":
         raise HTTPException(
             status_code=422, detail=f"Unknown column_status_key {payload.column_status_key!r}"
         )
-    assignee_id = None
-    if payload.assignee_ha_person_entity_id:
-        person = session.exec(
-            select(PersonDB).where(
-                PersonDB.ha_person_entity_id == payload.assignee_ha_person_entity_id
-            )
-        ).first()
-        assignee_id = person.id if person else None
-
-    data = TodoCreate(
-        title=payload.title,
-        description=payload.description,
-        column_id=column.id,
-        assignee_id=assignee_id,
-        due_date=payload.due_date,
-        priority=payload.priority,
-    )
-    todo = todos_svc.create_todo(session, data, source="ha_webhook", source_ref=payload.source_ref)
-    return {"id": str(todo.id)}
+    return {"id": str(result.id)}

@@ -16,13 +16,16 @@ prose.
 ## Status
 
 v1 design finalized (this document); implementation is being built incrementally.
-Phases 0–3 are done: packaging, a working REST API for columns/tags/todos (CRUD,
-default columns seeded on start), RRULE-based recurrence, and HA integration (person
-sync, `assignee_id` on todos, the `/api/webhook/ha/{secret}` automation endpoint with
-an auto-generated/persisted secret). Phase 4 (frontend) is partially done — Kanban
-board, card detail panel, tag management exist; an assignee picker, persons list, and
-webhook-secret display in the UI are **not implemented yet**. See `spec/roadmap.md`
-for build order, current status, and a few gap-fill decisions made along the way.
+Phases 0–3 are done: packaging, a working REST API for columns/tags/todos (CRUD),
+RRULE-based recurrence, and HA integration (person sync, `assignee_id` on todos, the
+`/api/webhook/ha/{secret}` automation endpoint). Phase 4 (frontend) is done: Kanban
+board, card detail panel (also used for creating todos), tag/persons/webhook-secret
+panels, a Settings page, and routing. **Multi-board support was added afterwards**,
+at the user's request, even though the original design listed it as out of scope for
+v1 — backend done (see § Data Model below for the resulting `Board` entity and the
+`Column.board_id` change), frontend (board switcher + management UI) still pending.
+See `spec/roadmap.md` for build order, current status, and gap-fill decisions made
+along the way.
 
 ## Technology Stack
 
@@ -92,17 +95,34 @@ session. This mapping drives the "my tasks" default filter.
 | `display_name` | str | |
 | `avatar_url` | str nullable | pulled from HA state attributes |
 
-### `Column`
+### `Board`
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
 | `name` | str | |
 | `position` | int | display order |
-| `status_key` | str unique | canonical key: `backlog`, `todo`, `in_progress`, `done` |
+
+Added after the rest of v1 (originally "out of scope"), at the user's request. Tags
+and persons stay global/shared across all boards — only `Column` (and therefore
+`Todo`, transitively) is board-scoped. The first board is seeded on first run
+(`services/boards.ensure_default_board`); every board the user creates afterwards
+gets the same four default columns seeded automatically. Deleting a board cascades to
+its columns and their todos (and tag links); the only remaining board can't be
+deleted.
+
+### `Column`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `board_id` | UUID FK → Board | |
+| `name` | str | |
+| `position` | int | display order |
+| `status_key` | str, unique **per board** | canonical key: `backlog`, `todo`, `in_progress`, `done` |
 | `is_terminal` | bool | tasks in terminal columns are "done" for recurrence purposes |
 
-Seeded on first run with the four default columns. Additional columns can be created
-by the user; `status_key` is free-form for custom columns.
+Additional columns can be created by the user; `status_key` is free-form for custom
+columns, but must be unique within its board (two different boards may each have a
+`todo` column).
 
 ### `Tag`
 | Column | Type | Notes |
@@ -146,23 +166,32 @@ Every browser request carries `X-Ingress-User`. A FastAPI dependency `get_curren
 resolves or creates the `Person` record and attaches it to the request. Webhook
 requests authenticate via the URL secret only.
 
+### Boards
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/boards` | List all boards ordered by position |
+| `POST` | `/api/boards` | Create board (seeds the four default columns) |
+| `PATCH` | `/api/boards/{id}` | Rename, reorder |
+| `DELETE` | `/api/boards/{id}` | Cascades to columns/todos/tag links; `422` if it's the only board |
+
 ### Todos
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/todos` | List todos. Query params: `column_id`, `assignee_id`, `mine` (bool), `tag_id`, `overdue` (bool) |
+| `GET` | `/api/todos` | List todos. Query params: `column_id`, `assignee_id`, `mine` (bool), `tag_id`, `board_id`, `overdue` (bool) |
 | `POST` | `/api/todos` | Create todo |
 | `GET` | `/api/todos/{id}` | Get single todo |
 | `PATCH` | `/api/todos/{id}` | Partial update (title, description, column, assignee, due_date, priority, rrule, position) |
 | `DELETE` | `/api/todos/{id}` | Delete todo |
-| `POST` | `/api/todos/{id}/complete` | Move to terminal column; materialise next recurrence if applicable |
+| `POST` | `/api/todos/{id}/complete` | Move to terminal column (same board); materialise next recurrence if applicable |
 
 ### Columns
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/columns` | List all columns ordered by position |
-| `POST` | `/api/columns` | Create column |
+| `GET` | `/api/columns` | List columns ordered by position. Query param: `board_id` |
+| `POST` | `/api/columns` | Create column (`board_id` required) |
 | `PATCH` | `/api/columns/{id}` | Rename, reorder, set `is_terminal` |
 | `DELETE` | `/api/columns/{id}` | Delete (must not have todos) |
 
@@ -195,6 +224,7 @@ Webhook payload schema:
   "title": "string",
   "description": "string (optional)",
   "assignee_ha_person_entity_id": "person.xyz (optional)",
+  "board_name": "string (optional, default: first board by position)",
   "column_status_key": "todo (optional, default: todo)",
   "due_date": "YYYY-MM-DD (optional)",
   "priority": 0-3,

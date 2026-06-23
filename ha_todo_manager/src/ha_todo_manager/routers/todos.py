@@ -25,6 +25,7 @@ def get_todos(
     column_id: uuid.UUID | None = Query(default=None),
     tag_id: uuid.UUID | None = Query(default=None),
     assignee_id: uuid.UUID | None = Query(default=None),
+    board_id: uuid.UUID | None = Query(default=None),
     overdue: bool | None = Query(default=None),
     mine: bool = Query(default=False),
     current_user: PersonDB | None = Depends(get_current_user),
@@ -35,7 +36,12 @@ def get_todos(
             return []
         assignee_id = current_user.id
     todos = svc.list_todos(
-        session, column_id=column_id, tag_id=tag_id, assignee_id=assignee_id, overdue=overdue
+        session,
+        column_id=column_id,
+        tag_id=tag_id,
+        assignee_id=assignee_id,
+        board_id=board_id,
+        overdue=overdue,
     )
     return [_to_read(session, todo) for todo in todos]
 

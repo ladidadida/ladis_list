@@ -92,6 +92,31 @@ def test_webhook_create_unknown_column_status_key_rejected(client: TestClient) -
 
 
 @pytest.mark.integration
+def test_webhook_create_targets_named_board(client: TestClient) -> None:
+    second_board = client.post("/api/boards", json={"name": "Second"}).json()
+    secret = client.get("/api/webhook/secret").json()["secret"]
+
+    response = client.post(
+        f"/api/webhook/ha/{secret}",
+        json={"action": "create", "title": "On second board", "board_name": "Second"},
+    )
+    assert response.status_code == 200
+    todo = client.get(f"/api/todos/{response.json()['id']}").json()
+    second_board_todos = client.get(f"/api/todos?board_id={second_board['id']}").json()
+    assert any(t["id"] == todo["id"] for t in second_board_todos)
+
+
+@pytest.mark.integration
+def test_webhook_create_unknown_board_name_rejected(client: TestClient) -> None:
+    secret = client.get("/api/webhook/secret").json()["secret"]
+    response = client.post(
+        f"/api/webhook/ha/{secret}",
+        json={"action": "create", "title": "X", "board_name": "Does Not Exist"},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
 def test_webhook_complete_todo(client: TestClient) -> None:
     column_id = _columns(client)[0]["id"]
     todo_id = client.post("/api/todos", json={"title": "Finish me", "column_id": column_id}).json()[

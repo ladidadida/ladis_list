@@ -6,6 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+def _board_id(client: TestClient) -> str:
+    return client.get("/api/boards").json()[0]["id"]
+
+
 @pytest.mark.integration
 def test_list_columns_returns_seeded_defaults(client: TestClient) -> None:
     response = client.get("/api/columns")
@@ -19,7 +23,13 @@ def test_list_columns_returns_seeded_defaults(client: TestClient) -> None:
 @pytest.mark.integration
 def test_create_column(client: TestClient) -> None:
     response = client.post(
-        "/api/columns", json={"name": "Review", "status_key": "review", "position": 4}
+        "/api/columns",
+        json={
+            "board_id": _board_id(client),
+            "name": "Review",
+            "status_key": "review",
+            "position": 4,
+        },
     )
     assert response.status_code == 201
     body = response.json()
@@ -50,9 +60,10 @@ def test_patch_column_not_found(client: TestClient) -> None:
 
 @pytest.mark.integration
 def test_delete_column(client: TestClient) -> None:
-    column_id = client.post("/api/columns", json={"name": "Temp", "status_key": "temp"}).json()[
-        "id"
-    ]
+    column_id = client.post(
+        "/api/columns",
+        json={"board_id": _board_id(client), "name": "Temp", "status_key": "temp"},
+    ).json()["id"]
     response = client.delete(f"/api/columns/{column_id}")
     assert response.status_code == 204
 
